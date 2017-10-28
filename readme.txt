@@ -1,9 +1,9 @@
 === WooCommerce Iugu ===
-Contributors: iugu, claudiosanches, braising
+Contributors: claudiosanches
 Tags: woocommerce, iugu, payment
-Requires at least: 3.9
-Tested up to: 4.5
-Stable tag: 1.0.10
+Requires at least: 4.0
+Tested up to: 4.9
+Stable tag: 2.0.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ Saiba mais como o Iugu funciona em [Iugu - Entendendo como tudo funciona](https:
 
 = Compatibilidade =
 
-Compatível desde a versão 2.1.x até 2.6.x do WooCommerce.
+Compatível desde a versão 3.0 do WooCommerce.
 
 Este plugin funciona integrado com o [WooCommerce Extra Checkout Fields for Brazil](http://wordpress.org/plugins/woocommerce-extra-checkout-fields-for-brazil/), desta forma é possível enviar documentos do cliente como "CPF" ou "CNPJ", além dos campos "número" e "bairro" do endereço.
 
@@ -27,10 +27,6 @@ Também é compatível com os seguintes plugins:
 
 * [WooCommerce Subscriptions](http://www.woothemes.com/products/woocommerce-subscriptions/) - Para pagamentos recorrentes/assinaturas.
 * [WooCommerce Pre-orders](http://www.woothemes.com/products/woocommerce-pre-orders/) - Para pré venda de produtos.
-
-= Instalação =
-
-Confira o nosso guia de instalação e configuração do Iugu na aba [Installation](http://wordpress.org/extend/plugins/iugu-woocommerce/installation/).
 
 = Dúvidas? =
 
@@ -83,7 +79,7 @@ Para saber mais sobre parcelamento e juros no Iugu leia o tutorial: [Existem jur
 
 = Configurações no WooCommerce =
 
-No WooCommerce 2.0 ou superior existe uma opção para cancelar a compra e liberar o estoque depois de alguns minutos.
+No WooCommerce 3.0 ou superior existe uma opção para cancelar a compra e liberar o estoque depois de alguns minutos.
 
 Esta opção não funciona muito bem com o boleto bancário, pois pagamentos por boleto bancário pode demorar até 48 horas para serem validados.
 
@@ -150,64 +146,8 @@ Abra um tópico para a sua pergunta [aqui](http://wordpress.org/support/plugin/i
 
 == Changelog ==
 
-= 1.0.10 - 2016/06/30 =
-
-* Corrigido o ID de pagamento das assinaturas de cartão de crédito.
-* Melhorado o funcionamento para Pessoa Jurídica, enviando o nome da empresa.
-
-= 1.0.9 - 2016/06/18 =
-
-* Corrigido o campo de número de telefone.
-
-= 1.0.8 - 2016/06/17 =
-
-* Corrigido suporte para WooCommerce 2.6+.
-* Adicionado suporte para WooCommerce Subscriptions 2.0+.
-* Corrigido suporte a assinaturas.
-* Corrigida a exibição de CPF/CPNJ em boletos.
-
-= 1.0.7 - 2016/02/09 =
-
-* Melhorada a geração das faturas, agora garantindo que seja pago apenas com cartão de crédito ou boleto, sem poder mudar a forma de pagamento.
-
-= 1.0.6 - 2015/05/01 =
-
-* Melhorada a forma que os valores são convertidos para centavos antes de enviar para a API do Iugu.
-* Melhorado o campo de "Nome impresso no cartão" do formulário de cartão de crédito.
-* Corrigido carregamento do JavaScript das opções de cartão de crédito quando instalado o WooCommerce Subscriptions.
-* Correções no HTML das instruções do cartão de crédito após o pagamento.
-
-= 1.0.5 - 2015/04/09 =
-
-* Corrigida opção de repasse de juros quando desativada.
-
-= 1.0.4 - 2015/03/25 =
-
-* Corrigida as parcelas exibidas na versões 2.1 do WooCommerce.
-
-= 1.0.3 - 2015/03/24 =
-
-* Melhorado o fluxo de pagamento com cartão de crédito.
-* Corrigida a mudança de status quando o cartão é recusado.
-* Melhorada as opções padrões do plugin.
-* Corrigida as URLs das notificações.
-* Removido o link de "Configurações" na página de plugins.
-
-= 1.0.2 - 2015/03/12 =
-
-* Melhorada a renovação de assinaturas no WooCommerce Subscription.
-
-= 1.0.1 - 2015/03/08 =
-
-* Adicionada opção para configurar a taxa de transação que é utilizada no repasse de juros do parcelamento.
-
-= 1.0.0 - 2015/03/08 =
-
-* Versão inicial.
+= 2.0.0 - 2017/11/xx =
 
 == Upgrade Notice ==
 
-= 1.0.10 =
-
-* Corrigido o ID de pagamento das assinaturas de cartão de crédito.
-* Melhorado o funcionamento para Pessoa Jurídica, enviando o nome da empresa.
+= 2.0.0 =
