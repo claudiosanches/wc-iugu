@@ -501,30 +501,21 @@ class WC_Iugu_API {
 	protected function create_invoice( $order ) {
 		$invoice_data = $this->get_invoice_data( $order );
 
-		if ( 'yes' === $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Creating an invoice on Iugu for order ' . $order->get_order_number() . ' with the following data: ' . wp_json_encode( $invoice_data, true ) );
-		}
+		$this->log( 'Creating an invoice on Iugu for order ' . $order->get_order_number() . ' with the following data: ' . wc_print_r( $invoice_data, true ) );
 
 		$invoice_data = $this->build_api_params( $invoice_data );
 		$response     = $this->do_request( 'invoices', 'POST', $invoice_data );
 
 		if ( is_wp_error( $response ) ) {
-			if ( 'yes' === $this->gateway->debug ) {
-				$this->gateway->log->add( $this->gateway->id, 'WP_Error while trying to generate an invoice: ' . $response->get_error_message() );
-			}
+			$this->log( 'WP_Error while trying to generate an invoice: ' . $response->get_error_message() );
 		} elseif ( 200 === intval( $response['response']['code'] ) && 'OK' === $response['response']['message'] ) {
 			$invoice = json_decode( $response['body'], true );
-
-			if ( 'yes' === $this->gateway->debug ) {
-				$this->gateway->log->add( $this->gateway->id, 'Invoice created successfully!' );
-			}
+			$this->log( 'Invoice created successfully!' );
 
 			return $invoice['id'];
 		}
 
-		if ( 'yes' === $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Error while generating the invoice for order ' . $order->get_order_number() . ': ' . print_r( $response, true ) );
-		}
+		$this->log( 'Error while generating the invoice for order ' . $order->get_order_number() . ': ' . wc_print_r( $response, true ) );
 
 		return '';
 	}
@@ -537,29 +528,20 @@ class WC_Iugu_API {
 	 * @return string
 	 */
 	public function get_invoice_status( $invoice_id ) {
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Getting invoice status from Iugu. Invoice ID: ' . $invoice_id );
-		}
+		$this->log( 'Getting invoice status from Iugu. Invoice ID: ' . $invoice_id );
 
 		$response = $this->do_request( 'invoices/' . $invoice_id, 'GET' );
 
 		if ( is_wp_error( $response ) ) {
-			if ( 'yes' == $this->gateway->debug ) {
-				$this->gateway->log->add( $this->gateway->id, 'WP_Error while trying to get an invoice status: ' . $response->get_error_message() );
-			}
+			$this->log( 'WP_Error while trying to get an invoice status: ' . $response->get_error_message() );
 		} elseif ( 200 == $response['response']['code'] && 'OK' == $response['response']['message'] ) {
 			$invoice = json_decode( $response['body'], true );
-
-			if ( 'yes' == $this->gateway->debug ) {
-				$this->gateway->log->add( $this->gateway->id, 'Invoice status recovered successfully!' );
-			}
+			$this->log( 'Invoice status recovered successfully!' );
 
 			return sanitize_text_field( $invoice['status'] );
 		}
 
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Error while getting the invoice status. Invoice ID: ' . $invoice_id . '. Response: ' . print_r( $response, true ) );
-		}
+		$this->log( 'Error while getting the invoice status. Invoice ID: ' . $invoice_id . '. Response: ' . wc_print_r( $response, true ) );
 
 		return '';
 	}
@@ -575,10 +557,8 @@ class WC_Iugu_API {
 	protected function get_charge_data( $order, $posted = array() ) {
 		$invoice_id = $this->create_invoice( $order );
 
-		if ( '' == $invoice_id ) {
-			if ( 'yes' == $this->gateway->debug ) {
-				$this->gateway->log->add( $this->gateway->id, 'Error while doing the charge for order ' . $order->get_order_number() . ': Missing the invoice ID.' );
-			}
+		if ( '' === $invoice_id ) {
+			$this->log( 'Error while doing the charge for order ' . $order->get_order_number() . ': Missing the invoice ID.' );
 
 			return array();
 		}
@@ -588,7 +568,7 @@ class WC_Iugu_API {
 		);
 
 		// Credit Card.
-		if ( 'credit-card' == $this->method ) {
+		if ( 'credit-card' === $this->method ) {
 			if ( isset( $posted['iugu_token'] ) ) {
 				// Credit card token.
 				$data['token'] = sanitize_text_field( $posted['iugu_token'] );
@@ -606,7 +586,7 @@ class WC_Iugu_API {
 		}
 
 		// Bank Slip.
-		if ( 'bank-slip' == $this->method ) {
+		if ( 'bank-slip' === $this->method ) {
 			$data['method'] = 'bank_slip';
 		}
 
@@ -624,9 +604,7 @@ class WC_Iugu_API {
 	 * @return array
 	 */
 	public function create_charge( $order, $posted = array() ) {
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Doing charge for order ' . $order->get_order_number() . '...' );
-		}
+		$this->log( 'Doing charge for order ' . $order->get_order_number() . '...' );
 
 		$charge_data = $this->get_charge_data( $order, $posted );
 
@@ -638,22 +616,15 @@ class WC_Iugu_API {
 		$response    = $this->do_request( 'charge', 'POST', $charge_data );
 
 		if ( is_wp_error( $response ) ) {
-			if ( 'yes' == $this->gateway->debug ) {
-				$this->gateway->log->add( $this->gateway->id, 'WP_Error while trying to do a charge: ' . $response->get_error_message() );
-			}
+			$this->log( 'WP_Error while trying to do a charge: ' . $response->get_error_message() );
 		} elseif ( isset( $response['body'] ) && ! empty( $response['body'] ) ) {
 			$charge = json_decode( $response['body'], true );
-
-			if ( 'yes' == $this->gateway->debug && isset( $charge['success'] ) ) {
-				$this->gateway->log->add( $this->gateway->id, 'Charge created successfully!' );
-			}
+			$this->log( 'Charge created successfully!' );
 
 			return $charge;
 		}
 
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Error while doing the charge for order ' . $order->get_order_number() . ': ' . print_r( $response, true ) );
-		}
+		$this->log( 'Error while doing the charge for order ' . $order->get_order_number() . ': ' . wc_print_r( $response, true ) );
 
 		return array( 'errors' => array( __( 'An error has occurred while processing your payment, please try again. Or contact us for assistance.', 'iugu-woocommerce' ) ) );
 	}
@@ -662,13 +633,10 @@ class WC_Iugu_API {
 	 * Create customer in Iugu API.
 	 *
 	 * @param  WC_Order $order Order data.
-	 *
-	 * @return string          Customer ID.
+	 * @return string
 	 */
 	protected function create_customer( $order ) {
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Creating customer...' );
-		}
+		$this->log( 'Creating customer...' );
 
 		$data = array(
 			'email'          => $order->billing_email,
@@ -685,22 +653,15 @@ class WC_Iugu_API {
 		$response      = $this->do_request( 'customers', 'POST', $customer_data );
 
 		if ( is_wp_error( $response ) ) {
-			if ( 'yes' == $this->gateway->debug ) {
-				$this->gateway->log->add( $this->gateway->id, 'WP_Error while trying create a customer: ' . $response->get_error_message() );
-			}
+			$this->log( 'WP_Error while trying create a customer: ' . $response->get_error_message() );
 		} elseif ( isset( $response['body'] ) && ! empty( $response['body'] ) ) {
 			$customer = json_decode( $response['body'], true );
-
-			if ( 'yes' == $this->gateway->debug && isset( $customer['id'] ) ) {
-				$this->gateway->log->add( $this->gateway->id, 'Customer created successfully!' );
-			}
+			$this->log( 'Customer created successfully!' );
 
 			return $customer['id'];
 		}
 
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Error while creating the customer for order ' . $order->get_order_number() . ': ' . print_r( $response, true ) );
-		}
+		$this->log( 'Error while creating the customer for order ' . $order->get_order_number() . ': ' . wc_print_r( $response, true ) );
 
 		return '';
 	}
@@ -744,9 +705,7 @@ class WC_Iugu_API {
 	 * @return string               Payment method ID.
 	 */
 	public function create_customer_payment_method( $order, $card_token ) {
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Creating customer payment method for order ' . $order->get_order_number() . '...' );
-		}
+		$this->log( 'Creating customer payment method for order ' . $order->get_order_number() . '...' );
 
 		$customer_id = $this->get_customer_id( $order );
 
@@ -761,22 +720,15 @@ class WC_Iugu_API {
 		$response     = $this->do_request( 'customers/' . $customer_id . '/payment_methods', 'POST', $payment_data );
 
 		if ( is_wp_error( $response ) ) {
-			if ( 'yes' == $this->gateway->debug ) {
-				$this->gateway->log->add( $this->gateway->id, 'WP_Error while trying create a customer payment method: ' . $response->get_error_message() );
-			}
+			$this->log( 'WP_Error while trying create a customer payment method: ' . $response->get_error_message() );
 		} elseif ( isset( $response['body'] ) && ! empty( $response['body'] ) ) {
 			$payment_method = json_decode( $response['body'], true );
-
-			if ( 'yes' == $this->gateway->debug && isset( $payment_method['id'] ) ) {
-				$this->gateway->log->add( $this->gateway->id, 'Customer payment method created successfully!' );
-			}
+			$this->log( 'Customer payment method created successfully!' );
 
 			return $payment_method['id'];
 		}
 
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Error while creating the customer payment method for order ' . $order->get_order_number() . ': ' . print_r( $response, true ) );
-		}
+		$this->log( 'Error while creating the customer payment method for order ' . $order->get_order_number() . ': ' . wc_print_r( $response, true ) );
 
 		return '';
 	}
@@ -866,9 +818,7 @@ class WC_Iugu_API {
 		$order_status   = $order->get_status();
 		$order_updated  = false;
 
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Iugu payment status for order ' . $order->get_order_number() . ' is now: ' . $invoice_status );
-		}
+		$this->log( 'Iugu payment status for order ' . $order->get_order_number() . ' is now: ' . $invoice_status );
 
 		switch ( $invoice_status ) {
 			case 'pending' :
