@@ -1,6 +1,6 @@
 {
   "name": "iugu-woocommerce",
-  "description": "Iugu for WooCommerce",
+  "description": "Iugu payment gateway for WooCommerce",
   "version": "2.0.0",
   "repository": {
     "type": "git",

@@ -1,0 +1,26 @@
+{
+  "name": "claudiosanches/iugu-woocommerce",
+  "description": "Iugu payment gateway for WooCommerce.",
+  "homepage": "https://claudiosanches.com/",
+  "type": "wordpress-plugin",
+  "license": "GPL-3.0+",
+  "require": {
+    "claudiosanches/wp-git-hooks": "*"
+  },
+  "scripts": {
+    "pre-update-cmd": [
+      "ClaudioSanches\\WpGitHooks\\Hooks::preHooks"
+    ],
+    "pre-install-cmd": [
+      "ClaudioSanches\\WpGitHooks\\Hooks::preHooks"
+    ],
+    "post-install-cmd": [
+      "\"vendor/bin/phpcs\" --config-set installed_paths vendor/wp-coding-standards/wpcs",
+      "ClaudioSanches\\WpGitHooks\\Hooks::postHooks"
+    ],
+    "post-update-cmd": [
+      "\"vendor/bin/phpcs\" --config-set installed_paths vendor/wp-coding-standards/wpcs",
+      "ClaudioSanches\\WpGitHooks\\Hooks::postHooks"
+    ]
+	}
+}
