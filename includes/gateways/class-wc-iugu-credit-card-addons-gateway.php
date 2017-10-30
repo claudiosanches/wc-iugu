@@ -62,7 +62,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 				throw new Exception( __( 'An error occurred while trying to save your data. Please contact us for get help.', 'iugu-woocommerce' ) );
 			}
 
-			$this->save_subscription_meta( $order->id, $payment_method_id );
+			$this->save_subscription_meta( $order->get_id(), $payment_method_id );
 
 			$payment_response = $this->process_subscription_payment( $order, $order->get_total() );
 
