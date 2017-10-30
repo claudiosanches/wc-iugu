@@ -49,9 +49,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 			$order = wc_get_order( $order_id );
 
 			if ( ! isset( $_POST['iugu_token'] ) ) { // WPCS: input var ok, CSRF ok.
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( $this->id, 'Error doing the subscription for order ' . $order->get_order_number() . ': Missing the "iugu_token".' );
-				}
+				$this->api->log( 'Error doing the subscription for order ' . $order->get_order_number() . ': Missing the "iugu_token".' );
 
 				throw new Exception( __( 'Please make sure your card details have been entered correctly and that your browser supports JavaScript.', 'iugu-woocommerce' ) );
 			}
@@ -59,9 +57,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 			// Create customer payment method.
 			$payment_method_id = $this->api->create_customer_payment_method( $order, sanitize_text_field( wp_unslash( $_POST['iugu_token'] ) ) );  // WPCS: input var ok, CSRF ok.
 			if ( ! $payment_method_id ) {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( $this->id, 'Invalid customer method ID for order ' . $order->get_order_number() );
-				}
+				$this->api->log( 'Invalid customer method ID for order ' . $order->get_order_number() );
 
 				throw new Exception( __( 'An error occurred while trying to save your data. Please contact us for get help.', 'iugu-woocommerce' ) );
 			}
@@ -105,9 +101,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 				$order = wc_get_order( $order_id );
 
 				if ( ! isset( $_POST['iugu_token'] ) ) {  // WPCS: input var ok, CSRF ok.
-					if ( 'yes' === $this->debug ) {
-						$this->log->add( $this->id, 'Error doing the pre-order for order ' . $order->get_order_number() . ': Missing the "iugu_token".' );
-					}
+					$this->api->log( 'Error doing the pre-order for order ' . $order->get_order_number() . ': Missing the "iugu_token".' );
 
 					$error_msg = __( 'Please make sure your card details have been entered correctly and that your browser supports JavaScript.', 'iugu-woocommerce' );
 
@@ -117,9 +111,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 				// Create customer payment method.
 				$payment_method_id = $this->api->create_customer_payment_method( $order, sanitize_text_field( wp_unslash( $_POST['iugu_token'] ) ) ); // WPCS: input var ok, CSRF ok.
 				if ( ! $payment_method_id ) {
-					if ( 'yes' === $this->debug ) {
-						$this->log->add( $this->id, 'Invalid customer method ID for order ' . $order->get_order_number() );
-					}
+					$this->api->log( 'Invalid customer method ID for order ' . $order->get_order_number() );
 
 					$error_msg = __( 'An error occurred while trying to save your data. Please contact us for get help.', 'iugu-woocommerce' );
 
@@ -213,9 +205,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 			return true;
 		}
 
-		if ( 'yes' === $this->debug ) {
-			$this->log->add( $this->id, 'Processing a subscription payment for order ' . $order->get_order_number() );
-		}
+		$this->api->log( 'Processing a subscription payment for order ' . $order->get_order_number() );
 
 		$payment_method_id = $order->get_meta( '_iugu_customer_payment_method_id' );
 
@@ -228,9 +218,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 		}
 
 		if ( ! $payment_method_id ) {
-			if ( 'yes' === $this->debug ) {
-				$this->log->add( $this->id, 'Missing customer payment method ID in subscription payment for order ' . $order->get_order_number() );
-			}
+			$this->api->log( 'Missing customer payment method ID in subscription payment for order ' . $order->get_order_number() );
 
 			return new WP_Error( 'iugu_subscription_error', __( 'Customer payment method not found!', 'iugu-woocommerce' ) );
 		}
@@ -336,17 +324,13 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	 * @param WC_Order $order Order instance.
 	 */
 	public function process_pre_order_release_payment( $order ) {
-		if ( 'yes' === $this->debug ) {
-			$this->log->add( $this->id, 'Processing a pre-order release payment for order ' . $order->get_order_number() );
-		}
+		$this->api->log( 'Processing a pre-order release payment for order ' . $order->get_order_number() );
 
 		try {
 			$payment_method_id = $order->get_meta( '_iugu_customer_payment_method_id' );
 
 			if ( ! $payment_method_id ) {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( $this->id, 'Missing customer payment method ID in subscription payment for order ' . $order->get_order_number() );
-				}
+				$this->api->log( 'Missing customer payment method ID in subscription payment for order ' . $order->get_order_number() );
 
 				return new Exception( __( 'Customer payment method not found!', 'iugu-woocommerce' ) );
 			}

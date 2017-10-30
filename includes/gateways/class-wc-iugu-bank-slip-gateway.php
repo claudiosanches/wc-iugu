@@ -56,11 +56,6 @@ class WC_Iugu_Bank_Slip_Gateway extends WC_Payment_Gateway {
 		$this->sandbox         = $this->get_option( 'sandbox', 'no' );
 		$this->debug           = $this->get_option( 'debug' );
 
-		// Active logs.
-		if ( 'yes' === $this->debug ) {
-			$this->log = wc_get_logger();
-		}
-
 		$this->api = new WC_Iugu_API( $this, 'bank-slip' );
 
 		// Actions.

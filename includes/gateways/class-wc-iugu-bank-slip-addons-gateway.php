@@ -142,9 +142,7 @@ class WC_Iugu_Bank_Slip_Addons_Gateway extends WC_Iugu_Bank_Slip_Gateway {
 			return true;
 		}
 
-		if ( 'yes' === $this->debug ) {
-			$this->log->add( $this->id, 'Processing a subscription payment for order ' . $order->get_order_number() );
-		}
+		$this->api->log( 'Processing a subscription payment for order ' . $order->get_order_number() );
 
 		$charge = $this->api->create_charge( $order );
 
@@ -196,9 +194,7 @@ class WC_Iugu_Bank_Slip_Addons_Gateway extends WC_Iugu_Bank_Slip_Gateway {
 	 * @param WC_Order $order Order data.
 	 */
 	public function process_pre_order_release_payment( $order ) {
-		if ( 'yes' === $this->debug ) {
-			$this->log->add( $this->id, 'Processing a pre-order release payment for order ' . $order->get_order_number() );
-		}
+		$this->api->log( 'Processing a pre-order release payment for order ' . $order->get_order_number() );
 
 		try {
 			$charge = $this->api->create_charge( $order );

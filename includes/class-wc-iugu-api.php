@@ -43,6 +43,13 @@ class WC_Iugu_API {
 	protected $method = '';
 
 	/**
+	 * Logger.
+	 *
+	 * @var WC_Logger
+	 */
+	protected $logger = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param WC_Payment_Gateway $gateway Gateway.
@@ -165,12 +172,34 @@ class WC_Iugu_API {
 	 * @return string Payment Method Id
 	 */
 	public function get_customer_payment_method_id() {
-		$customer_id = get_user_meta( get_current_user_id(), '_iugu_customer_id', true ); // WPCS: spelling ok.
+		// @codingStandardsIgnoreStart
+		$customer_id = get_user_meta( get_current_user_id(), '_iugu_customer_id', true );
+		// @codingStandardsIgnoreEnd
 		$endpoint    = 'customers/' . $customer_id;
 		$response    = $this->do_request( $endpoint, 'GET' );
 		$data        = isset( $response['body'] ) ? json_decode( $response['body'], true ) : array();
 
 		return isset( $data['default_payment_method_id'] ) ? $data['default_payment_method_id'] : '';
+	}
+
+	/**
+	 * Logging method.
+	 *
+	 * @param string $message Log message.
+	 * @param string $level   Log level.
+	 *                        Options: 'emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug'.
+	 *                        Defaults to 'info'.
+	 */
+	public function log( $message, $level = 'info' ) {
+		if ( 'yes' === $this->gateway->debug ) {
+			if ( empty( $this->logger ) ) {
+				$this->logger = wc_get_logger();
+			}
+
+			$this->logger->log( $level, $message, array(
+				'source' => $this->gateway->id,
+			) );
+		}
 	}
 
 	/**
@@ -447,6 +476,7 @@ class WC_Iugu_API {
 
 			if ( 0 < $shipping_cost ) {
 				$items[] = array(
+					/* translators: %s: shipping method name */
 					'description' => sprintf( __( 'Shipping via %s', 'iugu-woocommerce' ), $order->get_shipping_method() ),
 					'price_cents' => $shipping_cost,
 					'quantity'    => 1,
@@ -471,28 +501,28 @@ class WC_Iugu_API {
 	protected function create_invoice( $order ) {
 		$invoice_data = $this->get_invoice_data( $order );
 
-		if ( 'yes' == $this->gateway->debug ) {
-			$this->gateway->log->add( $this->gateway->id, 'Creating an invoice on Iugu for order ' . $order->get_order_number() . ' with the following data: ' . print_r( $invoice_data, true ) );
+		if ( 'yes' === $this->gateway->debug ) {
+			$this->gateway->log->add( $this->gateway->id, 'Creating an invoice on Iugu for order ' . $order->get_order_number() . ' with the following data: ' . wp_json_encode( $invoice_data, true ) );
 		}
 
 		$invoice_data = $this->build_api_params( $invoice_data );
 		$response     = $this->do_request( 'invoices', 'POST', $invoice_data );
 
 		if ( is_wp_error( $response ) ) {
-			if ( 'yes' == $this->gateway->debug ) {
+			if ( 'yes' === $this->gateway->debug ) {
 				$this->gateway->log->add( $this->gateway->id, 'WP_Error while trying to generate an invoice: ' . $response->get_error_message() );
 			}
-		} elseif ( 200 == $response['response']['code'] && 'OK' == $response['response']['message'] ) {
+		} elseif ( 200 === intval( $response['response']['code'] ) && 'OK' === $response['response']['message'] ) {
 			$invoice = json_decode( $response['body'], true );
 
-			if ( 'yes' == $this->gateway->debug ) {
+			if ( 'yes' === $this->gateway->debug ) {
 				$this->gateway->log->add( $this->gateway->id, 'Invoice created successfully!' );
 			}
 
 			return $invoice['id'];
 		}
 
-		if ( 'yes' == $this->gateway->debug ) {
+		if ( 'yes' === $this->gateway->debug ) {
 			$this->gateway->log->add( $this->gateway->id, 'Error while generating the invoice for order ' . $order->get_order_number() . ': ' . print_r( $response, true ) );
 		}
 

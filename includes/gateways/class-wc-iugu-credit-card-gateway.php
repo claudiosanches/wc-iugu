@@ -61,11 +61,6 @@ class WC_Iugu_Credit_Card_Gateway extends WC_Payment_Gateway {
 		$this->sandbox              = $this->get_option( 'sandbox', 'no' );
 		$this->debug                = $this->get_option( 'debug' );
 
-		// Active logs.
-		if ( 'yes' === $this->debug ) {
-			$this->log = wc_get_logger();
-		}
-
 		$this->api = new WC_Iugu_API( $this, 'credit-card' );
 
 		// Actions.
@@ -306,10 +301,7 @@ class WC_Iugu_Credit_Card_Gateway extends WC_Payment_Gateway {
 		if ( ! isset( $_POST['iugu_token'] ) ) { // WPCS: input var okay, CSRF ok.
 			$order = wc_get_order( $order_id );
 
-			if ( 'yes' === $this->debug ) {
-				$this->log->add( $this->id, 'Error doing the charge for order ' . $order->get_order_number() . ': Missing the "iugu_token".' );
-			}
-
+			$this->api->log( 'Error doing the charge for order ' . $order->get_order_number() . ': Missing the "iugu_token".' );
 			$this->api->add_error( '<strong>' . esc_attr( $this->title ) . '</strong>: ' . __( 'Please make sure your card details have been entered correctly and that your browser supports JavaScript.', 'iugu-woocommerce' ) );
 
 			return array(
