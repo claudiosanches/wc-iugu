@@ -27,7 +27,7 @@ class WC_Iugu {
 
 			// Hook to add Iugu Gateway to WooCommerce.
 			add_filter( 'woocommerce_payment_gateways', array( __CLASS__, 'add_gateway' ) );
-			add_filter( 'plugin_action_links_' . plugin_basename( WC_IUGU_MAIN_FILE ), array( __CLASS__, 'plugin_action_links' ) );
+			add_filter( 'plugin_action_links_' . plugin_basename( WC_IUGU_PLUGIN_FILE ), array( __CLASS__, 'plugin_action_links' ) );
 
 			// My account actions.
 			$my_account = new WC_Iugu_My_Account();
@@ -43,14 +43,14 @@ class WC_Iugu {
 	 * @return string
 	 */
 	public static function get_templates_path() {
-		return plugin_dir_path( WC_IUGU_MAIN_FILE ) . 'templates/';
+		return plugin_dir_path( WC_IUGU_PLUGIN_FILE ) . 'templates/';
 	}
 
 	/**
 	 * Load the plugin text domain for translation.
 	 */
 	public static function load_plugin_textdomain() {
-		load_plugin_textdomain( 'iugu-woocommerce', false, dirname( plugin_basename( WC_IUGU_MAIN_FILE ) ) . '/languages/' );
+		load_plugin_textdomain( 'iugu-woocommerce', false, dirname( plugin_basename( WC_IUGU_PLUGIN_FILE ) ) . '/languages/' );
 	}
 
 	/**

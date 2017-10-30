@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'WC_IUGU_VERSION', '2.0.0' );
-define( 'WC_IUGU_MAIN_FILE', __FILE__ );
+define( 'WC_IUGU_PLUGIN_FILE', __FILE__ );
 
 if ( ! class_exists( 'WC_Iugu' ) ) {
 	include_once dirname( __FILE__ ) . '/includes/class-wc-iugu.php';
