@@ -1,198 +1,43 @@
 <?php
 /**
- * Plugin Name: Iugu WooCommerce
- * Plugin URI: https://github.com/claudiosanches/iugu-woocommerce
- * Description: Iugu payment gateway for WooCommerce.
- * Author: Claudio Sanches
- * Author URI: https://claudiosanches.com/
- * Version: 2.0.0-beta.1
- * License: GPLv2 or later
- * Text Domain: iugu-woocommerce
- * Domain Path: languages/
+ * Plugin Name:          Iugu WooCommerce
+ * Plugin URI:           https://github.com/claudiosanches/iugu-woocommerce
+ * Description:          Iugu payment gateway for WooCommerce.
+ * Author:               Claudio Sanches
+ * Author URI:           https://claudiosanches.com
+ * Version:              2.0.0-beta.1
+ * License:              GPLv3
+ * Text Domain:          iugu-woocommerce
+ * Domain Path:          /languages
+ * WC requires at least: 3.0.0
+ * WC tested up to:      3.2.0
+ *
+ * Copyright (C) 2017 Claudio Sanches
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @package Iugu_WooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( 'WC_Iugu' ) ) :
+define( 'WC_IUGU_VERSION', '2.0.0' );
 
-/**
- * WooCommerce Iugu main class.
- */
-class WC_Iugu {
+if ( ! class_exists( 'WC_Iugu' ) ) {
+	include_once dirname( __FILE__ ) . '/includes/class-wc-iugu.php';
 
-	/**
-	 * Plugin version.
-	 *
-	 * @var string
-	 */
-	const VERSION = '2.0.0';
-
-	/**
-	 * Instance of this class.
-	 *
-	 * @var object
-	 */
-	protected static $instance = null;
-
-	/**
-	 * Initialize the plugin actions.
-	 */
-	public function __construct() {
-		// Load plugin text domain.
-		add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
-
-		// Checks with WooCommerce and WooCommerce Extra Checkout Fields for Brazil is installed.
-		if ( class_exists( 'WC_Payment_Gateway' ) && class_exists( 'Extra_Checkout_Fields_For_Brazil' ) ) {
-			$this->includes();
-
-			// Hook to add Iugu Gateway to WooCommerce.
-			add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateway' ) );
-			add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( $this, 'plugin_action_links' ) );
-		} else {
-			add_action( 'admin_notices', array( $this, 'dependencies_notices' ) );
-		}
-	}
-
-	/**
-	 * Return an instance of this class.
-	 *
-	 * @return object A single instance of this class.
-	 */
-	public static function get_instance() {
-		// If the single instance hasn't been set, set it now.
-		if ( null == self::$instance ) {
-			self::$instance = new self;
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * Get templates path.
-	 *
-	 * @return string
-	 */
-	public static function get_templates_path() {
-		return plugin_dir_path( __FILE__ ) . 'templates/';
-	}
-
-	/**
-	 * Load the plugin text domain for translation.
-	 */
-	public function load_plugin_textdomain() {
-		load_plugin_textdomain( 'iugu-woocommerce', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
-	}
-
-	/**
-	 * Includes.
-	 */
-	private function includes() {
-		include_once 'includes/class-wc-iugu-api.php';
-		include_once 'includes/class-wc-iugu-bank-slip-gateway.php';
-		include_once 'includes/class-wc-iugu-credit-card-gateway.php';
-		include_once 'includes/class-wc-iugu-my-account.php';
-
-		if ( class_exists( 'WC_Subscriptions_Order' ) || class_exists( 'WC_Pre_Orders_Order' ) ) {
-			// Subscriptions < 2.0.
-			if ( ! function_exists( 'wcs_create_renewal_order' ) ) {
-				include_once 'includes/class-wc-iugu-bank-slip-addons-gateway-deprecated.php';
-				include_once 'includes/class-wc-iugu-credit-card-addons-gateway-deprecated.php';
-			} else {
-				include_once 'includes/class-wc-iugu-bank-slip-addons-gateway.php';
-				include_once 'includes/class-wc-iugu-credit-card-addons-gateway.php';
-			}
-		}
-	}
-
-	/**
-	 * Add the gateway to WooCommerce.
-	 *
-	 * @param  array $methods WooCommerce payment methods.
-	 *
-	 * @return array          Payment methods with Iugu.
-	 */
-	public function add_gateway( $methods ) {
-		if ( class_exists( 'WC_Subscriptions_Order' ) || class_exists( 'WC_Pre_Orders_Order' ) ) {
-			if ( ! function_exists( 'wcs_create_renewal_order' ) ) {
-				$methods[] = 'WC_Iugu_Credit_Card_Addons_Gateway_Deprecated';
-				$methods[] = 'WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated';
-			} else {
-				$methods[] = 'WC_Iugu_Credit_Card_Addons_Gateway';
-				$methods[] = 'WC_Iugu_Bank_Slip_Addons_Gateway';
-			}
-		} else {
-			$methods[] = 'WC_Iugu_Credit_Card_Gateway';
-			$methods[] = 'WC_Iugu_Bank_Slip_Gateway';
-		}
-
-		return $methods;
-	}
-
-	/**
-	 * Dependencies notices.
-	 */
-	public function dependencies_notices() {
-		if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
-			include_once 'includes/views/html-notice-woocommerce-missing.php';
-		}
-
-		if ( ! class_exists( 'Extra_Checkout_Fields_For_Brazil' ) ) {
-			include_once 'includes/views/html-notice-ecfb-missing.php';
-		}
-	}
-
-	/**
-	 * Get log.
-	 *
-	 * @return string
-	 */
-	public static function get_log_view( $gateway_id ) {
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.2', '>=' ) ) {
-			return '<a href="' . esc_url( admin_url( 'admin.php?page=wc-status&tab=logs&log_file=' . esc_attr( $gateway_id ) . '-' . sanitize_file_name( wp_hash( $gateway_id ) ) . '.log' ) ) . '">' . __( 'System Status &gt; Logs', 'iugu-woocommerce' ) . '</a>';
-		}
-
-		return '<code>woocommerce/logs/' . esc_attr( $gateway_id ) . '-' . sanitize_file_name( wp_hash( $gateway_id ) ) . '.txt</code>';
-	}
-
-	/**
-	 * Action links.
-	 *
-	 * @param  array $links
-	 *
-	 * @return array
-	 */
-	public function plugin_action_links( $links ) {
-		$plugin_links = array();
-
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
-			$settings_url = admin_url( 'admin.php?page=wc-settings&tab=checkout&section=' );
-		} else {
-			$settings_url = admin_url( 'admin.php?page=woocommerce_settings&tab=payment_gateways&section=' );
-		}
-
-		if ( class_exists( 'WC_Subscriptions_Order' ) || class_exists( 'WC_Pre_Orders_Order' ) ) {
-			if ( ! function_exists( 'wcs_create_renewal_order' ) ) {
-				$credit_card = 'wc_iugu_credit_card_addons_gateway_deprecated';
-				$bank_slip   = 'wc_iugu_bank_slip_addons_gateway_deprecated';
-			} else {
-				$credit_card = 'wc_iugu_credit_card_addons_gateway';
-				$bank_slip   = 'wc_iugu_bank_slip_addons_gateway';
-			}
-		} else  {
-			$credit_card = 'wc_iugu_credit_card_Gateway';
-			$bank_slip   = 'wc_iugu_bank_slip_gateway';
-		}
-
-		$plugin_links[] = '<a href="' . esc_url( $settings_url . $credit_card ) . '">' . __( 'Credit Card Settings', 'iugu-woocommerce' ) . '</a>';
-
-		$plugin_links[] = '<a href="' . esc_url( $settings_url . $bank_slip ) . '">' . __( 'Bank Slip Settings', 'iugu-woocommerce' ) . '</a>';
-
-		return array_merge( $plugin_links, $links );
-	}
+	add_action( 'plugins_loaded', array( 'WC_Iugu', 'init' ) );
 }
-
-add_action( 'plugins_loaded', array( 'WC_Iugu', 'get_instance' ) );
-
-endif;

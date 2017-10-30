@@ -1,6 +1,16 @@
 <?php
 /**
- * WC Iugu API Class.
+ * Iugu API
+ *
+ * @package Iugu_WooCommerce\Classes
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * API class.
  */
 class WC_Iugu_API {
 
@@ -21,7 +31,7 @@ class WC_Iugu_API {
 	/**
 	 * Gateway class.
 	 *
-	 * @var WC_Iugu_Gateway
+	 * @var WC_Payment_Gateway
 	 */
 	protected $gateway;
 
@@ -35,7 +45,8 @@ class WC_Iugu_API {
 	/**
 	 * Constructor.
 	 *
-	 * @param WC_Iugu_Gateway $gateway
+	 * @param WC_Payment_Gateway $gateway Gateway.
+	 * @param string             $method  Method name.
 	 */
 	public function __construct( $gateway = null, $method = '' ) {
 		$this->gateway = $gateway;
@@ -58,34 +69,6 @@ class WC_Iugu_API {
 	 */
 	public function get_js_url() {
 		return $this->js_url;
-	}
-
-	/**
-	 * Get WooCommerce return URL.
-	 *
-	 * @return string
-	 */
-	protected function get_wc_request_url() {
-		global $woocommerce;
-
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
-			return WC()->api_request_url( get_class( $this->gateway ) );
-		} else {
-			return $woocommerce->api_request_url( get_class( $this->gateway ) );
-		}
-	}
-
-	/**
-	 * Get the settings URL.
-	 *
-	 * @return string
-	 */
-	public function get_settings_url() {
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
-			return admin_url( 'admin.php?page=wc-settings&tab=checkout&section=' . strtolower( get_class( $this->gateway ) ) );
-		}
-
-		return admin_url( 'admin.php?page=woocommerce_settings&tab=payment_gateways&section=' . get_class( $this->gateway ) );
 	}
 
 	/**
@@ -119,35 +102,7 @@ class WC_Iugu_API {
 	public function get_transaction_rate() {
 		$rate = isset( $this->gateway->transaction_rate ) ? $this->gateway->transaction_rate : 7;
 
-		return woocommerce_format_decimal( $rate );
-	}
-
-	/**
-	 * Get order total.
-	 *
-	 * @return float
-	 */
-	public function get_order_total() {
-		global $woocommerce;
-
-		$order_total = 0;
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
-			$order_id = absint( get_query_var( 'order-pay' ) );
-		} else {
-			$order_id = isset( $_GET['order_id'] ) ? absint( $_GET['order_id'] ) : 0;
-		}
-
-		// Gets order total from "pay for order" page.
-		if ( 0 < $order_id ) {
-			$order      = new WC_Order( $order_id );
-			$order_total = (float) $order->get_total();
-
-		// Gets order total from cart/checkout.
-		} elseif ( 0 < $woocommerce->cart->total ) {
-			$order_total = (float) $woocommerce->cart->total;
-		}
-
-		return $order_total;
+		return wc_format_decimal( $rate );
 	}
 
 	/**
@@ -156,30 +111,24 @@ class WC_Iugu_API {
 	 * @return bool
 	 */
 	public function using_supported_currency() {
-		return 'BRL' == get_woocommerce_currency();
+		return 'BRL' === get_woocommerce_currency();
 	}
 
 	/**
 	 * Check if order contains subscriptions.
 	 *
-	 * @param  int $order_id
+	 * @param  int $order_id Order ID.
 	 *
 	 * @return bool
 	 */
 	public function order_contains_subscription( $order_id ) {
-		if ( function_exists( 'wcs_order_contains_subscription' ) ) {
-			return wcs_order_contains_subscription( $order_id ) || wcs_order_contains_resubscribe( $order_id );
-		} elseif ( class_exists( 'WC_Subscriptions_Order' ) ) {
-			return WC_Subscriptions_Order::order_contains_subscription( $order_id ) || WC_Subscriptions_Renewal_Order::is_renewal( $order_id );
-		}
-
-		return false;
+		return wcs_order_contains_subscription( $order_id ) || wcs_order_contains_resubscribe( $order_id );
 	}
 
 	/**
 	 * Check if order contains pre-orders.
 	 *
-	 * @param  int $order_id
+	 * @param  int $order_id Order ID.
 	 *
 	 * @return bool
 	 */
@@ -190,29 +139,12 @@ class WC_Iugu_API {
 	/**
 	 * Only numbers.
 	 *
-	 * @param  string|int $string
+	 * @param  string|int $string string to extract numbers.
 	 *
 	 * @return string|int
 	 */
 	protected function only_numbers( $string ) {
 		return preg_replace( '([^0-9])', '', $string );
-	}
-
-	/**
-	 * Add error message in checkout.
-	 *
-	 * @param  string $message Error message.
-	 *
-	 * @return string          Displays the error message.
-	 */
-	public function add_error( $message ) {
-		global $woocommerce;
-
-		if ( function_exists( 'wc_add_notice' ) ) {
-			wc_add_notice( $message, 'error' );
-		} else {
-			$woocommerce->add_error( $message );
-		}
 	}
 
 	/**
@@ -223,29 +155,8 @@ class WC_Iugu_API {
 	 * @param string $message Email message.
 	 */
 	public function send_email( $subject, $title, $message ) {
-		global $woocommerce;
-
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
-			$mailer = WC()->mailer();
-		} else {
-			$mailer = $woocommerce->mailer();
-		}
-
+		$mailer = WC()->mailer();
 		$mailer->send( get_option( 'admin_email' ), $subject, $mailer->wrap_message( $title, $message ) );
-	}
-
-	/**
-	 * Empty card.
-	 */
-	public function empty_card() {
-		global $woocommerce;
-
-		// Empty cart.
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
-			WC()->cart->empty_cart();
-		} else {
-			$woocommerce->cart->empty_cart();
-		}
 	}
 
 	/**
@@ -254,8 +165,8 @@ class WC_Iugu_API {
 	 * @return string Payment Method Id
 	 */
 	public function get_customer_payment_method_id() {
-		$customer_id = get_user_meta( get_current_user_id(), '_iugu_customer_id', true );
-		$endpoint    = 'customers/' .  $customer_id;
+		$customer_id = get_user_meta( get_current_user_id(), '_iugu_customer_id', true ); // WPCS: spelling ok.
+		$endpoint    = 'customers/' . $customer_id;
 		$response    = $this->do_request( $endpoint, 'GET' );
 		$data        = isset( $response['body'] ) ? json_decode( $response['body'], true ) : array();
 
@@ -279,8 +190,8 @@ class WC_Iugu_API {
 			'timeout'   => 60,
 			'headers'    => array(
 				'Content-Type' => 'application/x-www-form-urlencoded;charset=UTF-8',
-				'Authorization' => 'Basic ' . base64_encode( $this->gateway->api_token . ':x' )
-			)
+				'Authorization' => 'Basic ' . base64_encode( $this->gateway->api_token . ':x' ),
+			),
 		);
 
 		if ( ! empty( $data ) ) {
@@ -297,8 +208,8 @@ class WC_Iugu_API {
 	/**
 	 * Build the API params from an array.
 	 *
-	 * @param  array  $data
-	 * @param  string $prefix
+	 * @param  array  $data   Purchase data.
+	 * @param  string $prefix Param prefix.
 	 *
 	 * @return string
 	 */
@@ -323,7 +234,7 @@ class WC_Iugu_API {
 			if ( is_array( $value ) ) {
 				$params[] = $this->build_api_params( $value, $key );
 			} else {
-				$params[] = $key . '=' . urlencode( $value );
+				$params[] = $key . '=' . rawurlencode( $value );
 			}
 		}
 
@@ -333,7 +244,7 @@ class WC_Iugu_API {
 	/**
 	 * Value in cents.
 	 *
-	 * @param  float $value
+	 * @param  float $value Value.
 	 * @return int
 	 */
 	protected function get_cents( $value ) {
@@ -343,7 +254,7 @@ class WC_Iugu_API {
 	/**
 	 * Get phone number
 	 *
-	 * @param  WC_Order $order
+	 * @param  WC_Order $order Order instance.
 	 *
 	 * @return string
 	 */
@@ -352,14 +263,14 @@ class WC_Iugu_API {
 
 		return array(
 			'area_code' => substr( $phone_number, 0, 2 ),
-			'number'    => substr( $phone_number, 2 )
+			'number'    => substr( $phone_number, 2 ),
 		);
 	}
 
 	/**
 	 * Get CPF or CNPJ.
 	 *
-	 * @param  WC_Order $order
+	 * @param  WC_Order $order Order instance.
 	 *
 	 * @return string
 	 */
@@ -383,7 +294,7 @@ class WC_Iugu_API {
 	/**
 	 * Check if the customer is a "company".
 	 *
-	 * @param  WC_Order $order
+	 * @param  WC_Order $order Order instance.
 	 *
 	 * @return bool
 	 */
@@ -403,7 +314,7 @@ class WC_Iugu_API {
 	 * @return string
 	 */
 	protected function get_invoice_due_date() {
-		$days = ( 'credit-card' !== $this->method ) ? intval( $this->gateway->deadline ) : 1;
+		$days = 'credit-card' !== $this->method ? intval( $this->gateway->deadline ) : 1;
 
 		return date( 'd-m-Y', strtotime( '+' . $days . ' day' ) );
 	}
@@ -411,7 +322,7 @@ class WC_Iugu_API {
 	/**
 	 * Get the invoice data.
 	 *
-	 * @param  WC_Order $order
+	 * @param  WC_Order $order Order instance.
 	 *
 	 * @return array
 	 */
@@ -423,14 +334,14 @@ class WC_Iugu_API {
 			'due_date'         => $this->get_invoice_due_date(),
 			'return_url'       => $this->gateway->get_return_url( $order ),
 			'expired_url'      => str_replace( '&#038;', '&', $order->get_cancel_order_url() ),
-			'notification_url' => $this->get_wc_request_url(),
+			'notification_url' => WC()->api_request_url( get_class( $this->gateway ) ),
 			'ignore_due_email' => true,
 			'payable_with'     => 'credit-card' === $this->method ? 'credit_card' : 'bank_slip',
 			'custom_variables' => array(
 				array(
 					'name'  => 'order_id',
-					'value' => $order->id
-				)
+					'value' => $order->id,
+				),
 			),
 			'payer'      => array(
 				'name'         => $order->billing_first_name . ' ' . $order->billing_last_name,
@@ -443,13 +354,13 @@ class WC_Iugu_API {
 					'city'     => $order->billing_city,
 					'state'    => $order->billing_state,
 					'country'  => isset( WC()->countries->countries[ $order->billing_country ] ) ? WC()->countries->countries[ $order->billing_country ] : $order->billing_country,
-					'zip_code' => $this->only_numbers( $order->billing_postcode )
-				)
+					'zip_code' => $this->only_numbers( $order->billing_postcode ),
+				),
 			),
 		);
 
-
-		if ( $cpf_cnpj = $this->get_cpf_cnpj( $order ) ) {
+		$cpf_cnpj = $this->get_cpf_cnpj( $order );
+		if ( $cpf_cnpj ) {
 			$data['payer']['cpf_cnpj'] = $cpf_cnpj;
 		}
 
@@ -458,11 +369,12 @@ class WC_Iugu_API {
 		}
 
 		// Force only one item.
-		if ( 'yes' == $this->gateway->send_only_total ) {
+		if ( 'yes' === $this->gateway->send_only_total ) {
 			$items[] = array(
+				/* translators: %s: order number */
 				'description' => sprintf( __( 'Order %s', 'iugu-woocommerce' ), $order->get_order_number() ),
 				'price_cents' => $this->get_cents( $order->get_total() ),
-				'quantity'    => 1
+				'quantity'    => 1,
 			);
 		} else {
 			// Products.
@@ -478,14 +390,15 @@ class WC_Iugu_API {
 						$item_name = $order_item['name'];
 						$item_meta = new WC_Order_Item_Meta( $order_item['item_meta'] );
 
-						if ( $meta = $item_meta->display( true, true ) ) {
+						$meta = $item_meta->display( true, true );
+						if ( $meta ) {
 							$item_name .= ' - ' . $meta;
 						}
 
 						$items[] = array(
 							'description' => $item_name,
 							'price_cents' => $item_total,
-							'quantity'    => $order_item['qty']
+							'quantity'    => $order_item['qty'],
 						);
 					}
 				}
@@ -503,7 +416,7 @@ class WC_Iugu_API {
 					$items[] = array(
 						'description' => $fee['name'],
 						'price_cents' => $fee_total,
-						'quantity'    => 1
+						'quantity'    => 1,
 					);
 				}
 			}
@@ -520,7 +433,7 @@ class WC_Iugu_API {
 					$items[] = array(
 						'description' => $tax['label'],
 						'price_cents' => $tax_total,
-						'quantity'    => 1
+						'quantity'    => 1,
 					);
 				}
 			}
@@ -536,15 +449,8 @@ class WC_Iugu_API {
 				$items[] = array(
 					'description' => sprintf( __( 'Shipping via %s', 'iugu-woocommerce' ), $order->get_shipping_method() ),
 					'price_cents' => $shipping_cost,
-					'quantity'    => 1
+					'quantity'    => 1,
 				);
-			}
-
-			// Discount.
-			if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.3', '<' ) ) {
-				if ( 0 < $order->get_order_discount() ) {
-					$data['discount_cents'] = $this->get_cents( $order->get_order_discount() );
-				}
 			}
 		}
 
@@ -848,7 +754,7 @@ class WC_Iugu_API {
 	/**
 	 * Process the payment.
 	 *
-	 * @param  int $order_id
+	 * @param  int $order_id Order ID.
 	 *
 	 * @return array
 	 */
@@ -862,25 +768,25 @@ class WC_Iugu_API {
 			foreach ( $charge['errors'] as $error ) {
 				if ( is_array( $error ) ) {
 					foreach ( $error as $_error ) {
-						$this->add_error( '<strong>' . esc_attr( $this->gateway->title ) . '</strong>: ' . $_error );
+						wc_add_notice( '<strong>' . esc_html( $this->gateway->title ) . '</strong>: ' . $_error, 'error' );
 					}
 				} else {
-					$this->add_error( '<strong>' . esc_attr( $this->gateway->title ) . '</strong>: ' . $error );
+					wc_add_notice( '<strong>' . esc_html( $this->gateway->title ) . '</strong>: ' . $error, 'error' );
 				}
 			}
 
 			return array(
 				'result'   => 'fail',
-				'redirect' => ''
+				'redirect' => '',
 			);
 		}
 
 		// Save transaction data.
-		if ( 'bank-slip' == $this->method ) {
+		if ( 'bank-slip' === $this->method ) {
 			$payment_data = array_map(
 				'sanitize_text_field',
 				array(
-					'pdf' => $charge['pdf']
+					'pdf' => $charge['pdf'],
 				)
 			);
 
@@ -889,7 +795,7 @@ class WC_Iugu_API {
 			$payment_data = array_map(
 				'sanitize_text_field',
 				array(
-					'installments' => isset( $_POST['iugu_card_installments'] ) ? sanitize_text_field( $_POST['iugu_card_installments'] ) : '1'
+					'installments' => isset( $_POST['iugu_card_installments'] ) ? $_POST['iugu_card_installments'] : '1',
 				)
 			);
 		}
@@ -897,17 +803,12 @@ class WC_Iugu_API {
 		update_post_meta( $order->id, '_iugu_wc_transaction_data', $payment_data );
 		update_post_meta( $order->id, '_transaction_id', sanitize_text_field( $charge['invoice_id'] ) );
 
-		// Save only in old versions.
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1.12', '<=' ) ) {
-			update_post_meta( $order->id, __( 'Iugu Transaction details', 'iugu-woocommerce' ), 'https://iugu.com/a/invoices/' . sanitize_text_field( $charge['invoice_id'] ) );
-		}
+		WC()->cart->empty_cart();
 
-		$this->empty_card();
-
-		if ( 'bank-slip' == $this->method ) {
+		if ( 'bank-slip' === $this->method ) {
 			$order->update_status( 'on-hold', __( 'Iugu: The customer generated a bank slip, awaiting payment confirmation.', 'iugu-woocommerce' ) );
 		} else {
-			if ( true == $charge['success'] ) {
+			if ( true === $charge['success'] ) {
 				$order->add_order_note( __( 'Iugu: Invoice paid successfully by credit card.', 'iugu-woocommerce' ) );
 				$order->payment_complete();
 			} else {
@@ -917,15 +818,15 @@ class WC_Iugu_API {
 
 		return array(
 			'result'   => 'success',
-			'redirect' => $this->gateway->get_return_url( $order )
+			'redirect' => $this->gateway->get_return_url( $order ),
 		);
 	}
 
 	/**
 	 * Update order status.
 	 *
-	 * @param int    $order_id
-	 * @param string $invoice_status
+	 * @param int    $order_id       Order ID.
+	 * @param string $invoice_status Invoice status.
 	 *
 	 * @return bool
 	 */

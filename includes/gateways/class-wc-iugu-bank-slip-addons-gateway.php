@@ -1,19 +1,18 @@
 <?php
+/**
+ * Iugu bank slip addons gateway
+ *
+ * @package Iugu_WooCommerce\Classes
+ */
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
  * Iugu Payment Bank Slip Addons Gateway class.
- *
- * Integration with WooCommerce Subscriptions and Pre-orders.
- *
- * @class   WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated
- * @extends WC_Iugu_Bank_Slip_Gateway
- * @version 1.0.0
- * @author  Iugu
  */
-class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gateway {
+class WC_Iugu_Bank_Slip_Addons_Gateway extends WC_Iugu_Bank_Slip_Gateway {
 
 	/**
 	 * Constructor.
@@ -22,7 +21,7 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 		parent::__construct();
 
 		if ( class_exists( 'WC_Subscriptions_Order' ) ) {
-			add_action( 'scheduled_subscription_payment_' . $this->id, array( $this, 'scheduled_subscription_payment' ), 10, 3 );
+			add_action( 'woocommerce_scheduled_subscription_payment_' . $this->id, array( $this, 'scheduled_subscription_payment' ), 10, 2 );
 		}
 
 		if ( class_exists( 'WC_Pre_Orders_Order' ) ) {
@@ -35,38 +34,34 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 	/**
 	 * Process the subscription.
 	 *
-	 * @param WC_Order $order
-	 *
+	 * @throws Exception Error messages.
+	 * @param int $order_id Order ID.
 	 * @return array
 	 */
 	protected function process_subscription( $order_id ) {
 		try {
-			$order = new WC_Order( $order_id );
+			$order = wc_get_order( $order_id );
 
-			// Try to do an initial payment.
-			$initial_payment = WC_Subscriptions_Order::get_total_initial_payment( $order );
-			if ( $initial_payment > 0 ) {
-				$payment_response = $this->process_subscription_payment( $order, $initial_payment );
-			}
+			$payment_response = $this->process_subscription_payment( $order, $order->get_total() );
+
 			if ( isset( $payment_response ) && is_wp_error( $payment_response ) ) {
 				throw new Exception( $payment_response->get_error_message() );
 			} else {
-				// Remove cart
-				$this->api->empty_card();
+				// Remove cart.
+				WC()->cart->empty_cart();
 
-				// Return thank you page redirect
+				// Return thank you page redirect.
 				return array(
 					'result'   => 'success',
-					'redirect' => $this->get_return_url( $order )
+					'redirect' => $this->get_return_url( $order ),
 				);
 			}
-
 		} catch ( Exception $e ) {
 			$this->api->add_error( '<strong>' . esc_attr( $this->title ) . '</strong>: ' . $e->getMessage() );
 
 			return array(
 				'result'   => 'fail',
-				'redirect' => ''
+				'redirect' => '',
 			);
 		}
 	}
@@ -74,28 +69,28 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 	/**
 	 * Process the pre-order.
 	 *
-	 * @param WC_Order $order
+	 * @param int $order_id Order ID.
 	 *
 	 * @return array
 	 */
 	protected function process_pre_order( $order_id ) {
 		if ( WC_Pre_Orders_Order::order_requires_payment_tokenization( $order_id ) ) {
 			try {
-				$order = new WC_Order( $order_id );
+				$order = wc_get_order( $order_id );
 
-				// Reduce stock levels
+				// Reduce stock levels.
 				$order->reduce_order_stock();
 
-				// Remove cart
-				$this->api->empty_card();
+				// Remove cart.
+				WC()->cart->empty_cart();
 
 				// Is pre ordered!
 				WC_Pre_Orders_Order::mark_order_as_pre_ordered( $order );
 
-				// Return thank you page redirect
+				// Return thank you page redirect.
 				return array(
 					'result'   => 'success',
-					'redirect' => $this->get_return_url( $order )
+					'redirect' => $this->get_return_url( $order ),
 				);
 
 			} catch ( Exception $e ) {
@@ -103,10 +98,9 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 
 				return array(
 					'result'   => 'fail',
-					'redirect' => ''
+					'redirect' => '',
 				);
 			}
-
 		} else {
 			return parent::process_payment( $order_id );
 		}
@@ -115,35 +109,40 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 	/**
 	 * Process the payment.
 	 *
-	 * @param  int $order_id
+	 * @param  int $order_id Order ID.
 	 *
 	 * @return array
 	 */
 	public function process_payment( $order_id ) {
-		// Processing subscription.
 		if ( $this->api->order_contains_subscription( $order_id ) ) {
+			// Processing subscription.
 			return $this->process_subscription( $order_id );
-
-		// Processing pre-order.
 		} elseif ( $this->api->order_contains_pre_order( $order_id ) ) {
+			// Processing pre-order.
 			return $this->process_pre_order( $order_id );
-
-		// Processing regular product.
 		} else {
+			// Processing regular product.
 			return parent::process_payment( $order_id );
 		}
 	}
 
 	/**
-	 * process_subscription_payment function.
+	 * Process subscription payment.
 	 *
-	 * @param WC_order $order
-	 * @param int      $amount (default: 0)
+	 * @param WC_Order $order  Order instance.
+	 * @param int      $amount Subscription amount.
 	 *
 	 * @return bool|WP_Error
 	 */
 	public function process_subscription_payment( $order = '', $amount = 0 ) {
-		if ( 'yes' == $this->debug ) {
+		if ( ! $amount ) {
+			// Payment complete.
+			$order->payment_complete();
+
+			return true;
+		}
+
+		if ( 'yes' === $this->debug ) {
 			$this->log->add( $this->id, 'Processing a subscription payment for order ' . $order->get_order_number() );
 		}
 
@@ -158,20 +157,17 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 		$payment_data = array_map(
 			'sanitize_text_field',
 			array(
-				'pdf' => $charge['pdf']
+				'pdf' => $charge['pdf'],
 			)
 		);
-		update_post_meta( $order->id, '_iugu_wc_transaction_data', $payment_data );
-		update_post_meta( $order->id, __( 'Iugu Bank Slip URL', 'iugu-woocommerce' ), $payment_data['pdf'] );
-		update_post_meta( $order->id, '_transaction_id', sanitize_text_field( $charge['invoice_id'] ) );
 
-		// Save only in old versions.
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1.12', '<=' ) ) {
-			update_post_meta( $order->id, __( 'Iugu Transaction details', 'iugu-woocommerce' ), 'https://iugu.com/a/invoices/' . sanitize_text_field( $charge['invoice_id'] ) );
-		}
+		$order->update_meta_data( '_iugu_wc_transaction_data', $payment_data );
+		$order->update_meta_data( __( 'Iugu Bank Slip URL', 'iugu-woocommerce' ), $payment_data['pdf'] );
+		$order->set_transaction_id( sanitize_text_field( $charge['invoice_id'] ) );
+		$order->save();
 
 		$order_note = __( 'Iugu: The customer generated a bank slip, awaiting payment confirmation.', 'iugu-woocommerce' );
-		if ( 'pending' == $order->get_status() ) {
+		if ( 'pending' === $order->get_status() ) {
 			$order->update_status( 'on-hold', $order_note );
 		} else {
 			$order->add_order_note( $order_note );
@@ -184,26 +180,23 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 	 * Scheduled subscription payment.
 	 *
 	 * @param float    $amount_to_charge The amount to charge.
-	 * @param WC_Order $order            The WC_Order object of the order which the subscription was purchased in.
-	 * @param int      $product_id       The ID of the subscription product for which this payment relates.
+	 * @param WC_Order $renewal_order    A WC_Order object created to record the renewal payment.
 	 */
-	public function scheduled_subscription_payment( $amount_to_charge, $order, $product_id ) {
-		$result = $this->process_subscription_payment( $order, $amount_to_charge );
+	public function scheduled_subscription_payment( $amount_to_charge, $renewal_order ) {
+		$result = $this->process_subscription_payment( $renewal_order, $amount_to_charge );
 
 		if ( is_wp_error( $result ) ) {
-			WC_Subscriptions_Manager::process_subscription_payment_failure_on_order( $order, $product_id );
-		} else {
-			WC_Subscriptions_Manager::process_subscription_payments_on_order( $order );
+			$renewal_order->update_status( 'failed', $result->get_error_message() );
 		}
 	}
 
 	/**
 	 * Process a pre-order payment when the pre-order is released.
 	 *
-	 * @param WC_Order $order
+	 * @param WC_Order $order Order data.
 	 */
 	public function process_pre_order_release_payment( $order ) {
-		if ( 'yes' == $this->debug ) {
+		if ( 'yes' === $this->debug ) {
 			$this->log->add( $this->id, 'Processing a pre-order release payment for order ' . $order->get_order_number() );
 		}
 
@@ -219,25 +212,23 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 			$payment_data = array_map(
 				'sanitize_text_field',
 				array(
-					'pdf' => $charge['pdf']
+					'pdf' => $charge['pdf'],
 				)
 			);
-			update_post_meta( $order->id, '_iugu_wc_transaction_data', $payment_data );
-			update_post_meta( $order->id, __( 'Iugu Bank Slip URL', 'iugu-woocommerce' ), $payment_data['pdf'] );
-			update_post_meta( $order->id, '_transaction_id', sanitize_text_field( $charge['invoice_id'] ) );
 
-			// Save only in old versions.
-			if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1.12', '<=' ) ) {
-				update_post_meta( $order->id, __( 'Iugu Transaction details', 'iugu-woocommerce' ), 'https://iugu.com/a/invoices/' . sanitize_text_field( $charge['invoice_id'] ) );
-			}
+			$order->update_meta_data( '_iugu_wc_transaction_data', $payment_data );
+			$order->update_meta_data( __( 'Iugu Bank Slip URL', 'iugu-woocommerce' ), $payment_data['pdf'] );
+			$order->set_transaction_id( sanitize_text_field( $charge['invoice_id'] ) );
+			$order->save();
 
 			$order->update_status( 'on-hold', __( 'Iugu: The customer generated a bank slip, awaiting payment confirmation.', 'iugu-woocommerce' ) );
+
 		} catch ( Exception $e ) {
+			/* translators: %s: error message */
 			$order_note = sprintf( __( 'Iugu: Pre-order payment failed (%s).', 'iugu-woocommerce' ), $e->getMessage() );
 
-			// Mark order as failed if not already set,
-			// otherwise, make sure we add the order note so we can detect when someone fails to check out multiple times
-			if ( 'failed' != $order->get_status() ) {
+			// Mark order as failed if not already set, otherwise, make sure we add the order note so we can detect when someone fails to check out multiple times.
+			if ( 'failed' !== $order->get_status() ) {
 				$order->update_status( 'failed', $order_note );
 			} else {
 				$order->add_order_note( $order_note );
@@ -248,24 +239,22 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 	/**
 	 * Update subscription status.
 	 *
-	 * @param int    $order_id
-	 * @param string $invoice_status
-	 *
-	 * @return bool
+	 * @param int    $order_id       Order ID.
+	 * @param string $invoice_status Invoice status.
 	 */
 	protected function update_subscription_status( $order_id, $invoice_status ) {
-		$order          = new WC_Order( $order_id );
+		$order          = wc_get_order( $order_id );
 		$invoice_status = strtolower( $invoice_status );
 		$order_updated  = false;
 
-		if ( 'paid' == $invoice_status ) {
+		if ( 'paid' === $invoice_status ) {
 			$order->add_order_note( __( 'Iugu: Subscription paid successfully.', 'iugu-woocommerce' ) );
 
-			// Payment complete
+			// Payment complete.
 			$order->payment_complete();
 
 			$order_updated = true;
-		} elseif ( in_array( $invoice_status, array( 'canceled', 'refunded', 'expired' ) ) ) {
+		} elseif ( in_array( $invoice_status, array( 'canceled', 'refunded', 'expired' ), true ) ) {
 			$order->add_order_note( __( 'Iugu: Subscription payment failed.', 'iugu-woocommerce' ) );
 
 			WC_Subscriptions_Manager::process_subscription_payment_failure_on_order( $order );
@@ -280,15 +269,15 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 	 * Notification handler.
 	 */
 	public function notification_handler() {
-		@ob_clean();
+		ob_clean();
 
-		if ( isset( $_REQUEST['event'] ) && isset( $_REQUEST['data']['id'] ) && 'invoice.status_changed' == $_REQUEST['event'] ) {
+		if ( isset( $_REQUEST['event'] ) && isset( $_REQUEST['data']['id'] ) && 'invoice.status_changed' === sanitize_text_field( wp_unslash( $_REQUEST['event'] ) ) ) { // WPCS: input var okay, CSRF ok.
 			global $wpdb;
 
 			header( 'HTTP/1.1 200 OK' );
 
-			$invoice_id = sanitize_text_field( $_REQUEST['data']['id'] );
-			$order_id   = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_transaction_id' AND meta_value = '%s'", $invoice_id ) );
+			$invoice_id = sanitize_text_field( wp_unslash( $_REQUEST['data']['id'] ) ); // WPCS: input var okay, CSRF ok.
+			$order_id   = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_transaction_id' AND meta_value = '%s'", $invoice_id ) ); // WPCS: db call ok, cache ok.
 			$order_id   = intval( $order_id );
 
 			if ( $order_id ) {
@@ -306,6 +295,8 @@ class WC_Iugu_Bank_Slip_Addons_Gateway_Deprecated extends WC_Iugu_Bank_Slip_Gate
 			}
 		}
 
-		wp_die( __( 'The request failed!', 'iugu-woocommerce' ), __( 'The request failed!', 'iugu-woocommerce' ), array( 'response' => 200 ) );
+		wp_die( esc_html__( 'The request failed!', 'iugu-woocommerce' ), esc_html__( 'The request failed!', 'iugu-woocommerce' ), array(
+			'response' => 200,
+		) );
 	}
 }

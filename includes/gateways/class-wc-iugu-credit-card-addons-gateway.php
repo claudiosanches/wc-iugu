@@ -1,15 +1,16 @@
 <?php
+/**
+ * Iugu credit card addons gateway
+ *
+ * @package Iugu_WooCommerce\Classes
+ */
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
  * Iugu Payment Credit Card Addons Gateway class.
- *
- * Integration with WooCommerce Subscriptions and Pre-orders.
- *
- * @class   WC_Iugu_Credit_Card_Addons_Gateway
- * @extends WC_Iugu_Credit_Card_Gateway
  */
 class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 
@@ -39,16 +40,16 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	/**
 	 * Process the subscription.
 	 *
-	 * @param WC_Order $order
-	 *
+	 * @throws Exception Error messages.
+	 * @param int $order_id Order ID.
 	 * @return array
 	 */
 	protected function process_subscription( $order_id ) {
 		try {
-			$order = new WC_Order( $order_id );
+			$order = wc_get_order( $order_id );
 
-			if ( ! isset( $_POST['iugu_token'] ) ) {
-				if ( 'yes' == $this->debug ) {
+			if ( ! isset( $_POST['iugu_token'] ) ) { // WPCS: input var ok, CSRF ok.
+				if ( 'yes' === $this->debug ) {
 					$this->log->add( $this->id, 'Error doing the subscription for order ' . $order->get_order_number() . ': Missing the "iugu_token".' );
 				}
 
@@ -56,9 +57,9 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 			}
 
 			// Create customer payment method.
-			$payment_method_id = $this->api->create_customer_payment_method( $order, $_POST['iugu_token'] );
+			$payment_method_id = $this->api->create_customer_payment_method( $order, sanitize_text_field( wp_unslash( $_POST['iugu_token'] ) ) );  // WPCS: input var ok, CSRF ok.
 			if ( ! $payment_method_id ) {
-				if ( 'yes' == $this->debug ) {
+				if ( 'yes' === $this->debug ) {
 					$this->log->add( $this->id, 'Invalid customer method ID for order ' . $order->get_order_number() );
 				}
 
@@ -72,22 +73,21 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 			if ( isset( $payment_response ) && is_wp_error( $payment_response ) ) {
 				throw new Exception( $payment_response->get_error_message() );
 			} else {
-				// Remove cart
-				$this->api->empty_card();
+				// Remove cart.
+				WC()->cart->empty_cart();
 
-				// Return thank you page redirect
+				// Return thank you page redirect.
 				return array(
 					'result'   => 'success',
-					'redirect' => $this->get_return_url( $order )
+					'redirect' => $this->get_return_url( $order ),
 				);
 			}
-
 		} catch ( Exception $e ) {
 			$this->api->add_error( '<strong>' . esc_attr( $this->title ) . '</strong>: ' . $e->getMessage() );
 
 			return array(
 				'result'   => 'fail',
-				'redirect' => ''
+				'redirect' => '',
 			);
 		}
 	}
@@ -95,17 +95,17 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	/**
 	 * Process the pre-order.
 	 *
-	 * @param WC_Order $order
-	 *
+	 * @throws Exception Error messages.
+	 * @param int $order_id Order ID.
 	 * @return array
 	 */
 	protected function process_pre_order( $order_id ) {
 		if ( WC_Pre_Orders_Order::order_requires_payment_tokenization( $order_id ) ) {
 			try {
-				$order = new WC_Order( $order_id );
+				$order = wc_get_order( $order_id );
 
-				if ( ! isset( $_POST['iugu_token'] ) ) {
-					if ( 'yes' == $this->debug ) {
+				if ( ! isset( $_POST['iugu_token'] ) ) {  // WPCS: input var ok, CSRF ok.
+					if ( 'yes' === $this->debug ) {
 						$this->log->add( $this->id, 'Error doing the pre-order for order ' . $order->get_order_number() . ': Missing the "iugu_token".' );
 					}
 
@@ -115,9 +115,9 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 				}
 
 				// Create customer payment method.
-				$payment_method_id = $this->api->create_customer_payment_method( $order, $_POST['iugu_token'] );
+				$payment_method_id = $this->api->create_customer_payment_method( $order, sanitize_text_field( wp_unslash( $_POST['iugu_token'] ) ) ); // WPCS: input var ok, CSRF ok.
 				if ( ! $payment_method_id ) {
-					if ( 'yes' == $this->debug ) {
+					if ( 'yes' === $this->debug ) {
 						$this->log->add( $this->id, 'Invalid customer method ID for order ' . $order->get_order_number() );
 					}
 
@@ -127,21 +127,22 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 				}
 
 				// Save the payment method ID in order data.
-				update_post_meta( $order->id, '_iugu_customer_payment_method_id', $payment_method_id );
+				$order->update_meta_data( '_iugu_customer_payment_method_id', $payment_method_id );
+				$order->save();
 
-				// Reduce stock levels
+				// Reduce stock levels.
 				$order->reduce_order_stock();
 
-				// Remove cart
-				$this->api->empty_card();
+				// Remove cart.
+				WC()->cart->empty_cart();
 
 				// Is pre ordered!
 				WC_Pre_Orders_Order::mark_order_as_pre_ordered( $order );
 
-				// Return thank you page redirect
+				// Return thank you page redirect.
 				return array(
 					'result'   => 'success',
-					'redirect' => $this->get_return_url( $order )
+					'redirect' => $this->get_return_url( $order ),
 				);
 
 			} catch ( Exception $e ) {
@@ -149,10 +150,9 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 
 				return array(
 					'result'   => 'fail',
-					'redirect' => ''
+					'redirect' => '',
 				);
 			}
-
 		} else {
 			return parent::process_payment( $order_id );
 		}
@@ -161,21 +161,19 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	/**
 	 * Process the payment.
 	 *
-	 * @param  int $order_id
+	 * @param  int $order_id Order ID.
 	 *
 	 * @return array
 	 */
 	public function process_payment( $order_id ) {
-		// Processing subscription.
 		if ( $this->api->order_contains_subscription( $order_id ) ) {
+			// Processing subscription.
 			return $this->process_subscription( $order_id );
-
-		// Processing pre-order.
 		} elseif ( $this->api->order_contains_pre_order( $order_id ) ) {
+			// Processing pre-order.
 			return $this->process_pre_order( $order_id );
-
-		// Processing regular product.
 		} else {
+			// Processing regular product.
 			return parent::process_payment( $order_id );
 		}
 	}
@@ -183,15 +181,18 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	/**
 	 * Store the Iugu customer payment method id on the order and subscriptions in the order.
 	 *
-	 * @param int $order_id
-	 * @param string $payment_method_id
+	 * @param int    $order_id          Order ID.
+	 * @param string $payment_method_id Payment method ID.
 	 */
 	protected function save_subscription_meta( $order_id, $payment_method_id ) {
-		$payment_method_id = wc_clean( $payment_method_id );
-		update_post_meta( $order_id, '_iugu_customer_payment_method_id', $payment_method_id );
+		$order             = wc_get_order( $order_id );
+		$payment_method_id = sanitize_text_field( $payment_method_id );
+
+		$order->update_meta_data( '_iugu_customer_payment_method_id', $payment_method_id );
+		$order->save();
 
 		// Also store it on the subscriptions being purchased in the order.
-		foreach( wcs_get_subscriptions_for_order( $order_id ) as $subscription ) {
+		foreach ( wcs_get_subscriptions_for_order( $order->get_id() ) as $subscription ) {
 			update_post_meta( $subscription->id, '_iugu_customer_payment_method_id', $payment_method_id );
 		}
 	}
@@ -199,42 +200,44 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	/**
 	 * Process subscription payment.
 	 *
-	 * @param WC_order $order
-	 * @param int      $amount (default: 0)
+	 * @param WC_Order $order  Order instance.
+	 * @param int      $amount Subscription amount.
 	 *
 	 * @return bool|WP_Error
 	 */
 	public function process_subscription_payment( $order = '', $amount = 0 ) {
-		if ( 0 == $amount ) {
+		if ( ! $amount ) {
 			// Payment complete.
 			$order->payment_complete();
 
 			return true;
 		}
 
-		if ( 'yes' == $this->debug ) {
+		if ( 'yes' === $this->debug ) {
 			$this->log->add( $this->id, 'Processing a subscription payment for order ' . $order->get_order_number() );
 		}
 
-		$payment_method_id = get_post_meta( $order->id, '_iugu_customer_payment_method_id', true );
+		$payment_method_id = $order->get_meta( '_iugu_customer_payment_method_id' );
 
 		if ( ! $payment_method_id ) {
 			$payment_method_id = $this->api->get_customer_payment_method_id();
 
 			if ( ! empty( $payment_method_id ) ) {
-				update_post_meta( $order->id, '_iugu_customer_payment_method_id', $payment_method_id );
+				$order->update_meta_data( '_iugu_customer_payment_method_id', $payment_method_id );
 			}
 		}
 
 		if ( ! $payment_method_id ) {
-			if ( 'yes' == $this->debug ) {
+			if ( 'yes' === $this->debug ) {
 				$this->log->add( $this->id, 'Missing customer payment method ID in subscription payment for order ' . $order->get_order_number() );
 			}
 
 			return new WP_Error( 'iugu_subscription_error', __( 'Customer payment method not found!', 'iugu-woocommerce' ) );
 		}
 
-		$charge = $this->api->create_charge( $order, array( 'customer_payment_method_id' => $payment_method_id ) );
+		$charge = $this->api->create_charge( $order, array(
+			'customer_payment_method_id' => $payment_method_id,
+		) );
 
 		if ( isset( $charge['errors'] ) && ! empty( $charge['errors'] ) ) {
 			$error = is_array( $charge['errors'] ) ? current( $charge['errors'] ) : $charge['errors'];
@@ -242,14 +245,10 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 			return new WP_Error( 'iugu_subscription_error', $error );
 		}
 
-		update_post_meta( $order->id, '_transaction_id', sanitize_text_field( $charge['invoice_id'] ) );
+		$order->set_transaction_id( sanitize_text_field( $charge['invoice_id'] ) );
+		$order->save();
 
-		// Save only in old versions.
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1.12', '<=' ) ) {
-			update_post_meta( $order->id, __( 'Iugu Transaction details', 'iugu-woocommerce' ), 'https://iugu.com/a/invoices/' . sanitize_text_field( $charge['invoice_id'] ) );
-		}
-
-		if ( true == $charge['success'] ) {
+		if ( true === $charge['success'] ) {
 			$order->add_order_note( __( 'Iugu: Subscription paid successfully by credit card.', 'iugu-woocommerce' ) );
 			$order->payment_complete();
 
@@ -262,14 +261,14 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	/**
 	 * Scheduled subscription payment.
 	 *
-	 * @param float $amount_to_charge The amount to charge.
-	 * @param WC_Order $renewal_order A WC_Order object created to record the renewal payment.
+	 * @param float    $amount_to_charge The amount to charge.
+	 * @param WC_Order $order            Order instance.
 	 */
-	public function scheduled_subscription_payment( $amount_to_charge, $renewal_order ) {
-		$result = $this->process_subscription_payment( $renewal_order, $amount_to_charge );
+	public function scheduled_subscription_payment( $amount_to_charge, $order ) {
+		$result = $this->process_subscription_payment( $order, $amount_to_charge );
 
 		if ( is_wp_error( $result ) ) {
-			$renewal_order->update_status( 'failed', $result->get_error_message() );
+			$order->update_status( 'failed', $result->get_error_message() );
 		}
 	}
 
@@ -278,18 +277,18 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	 * an automatic renewal payment which previously failed.
 	 *
 	 * @param WC_Subscription $subscription The subscription for which the failing payment method relates.
-	 * @param WC_Order $renewal_order The order which recorded the successful payment (to make up for the failed automatic payment).
+	 * @param WC_Order        $order        Order instance.
 	 */
-	public function update_failing_payment_method( $subscription, $renewal_order ) {
-		update_post_meta( $subscription->id, '_iugu_customer_payment_method_id', get_post_meta( $renewal_order->id, '_iugu_customer_payment_method_id', true ) );
+	public function update_failing_payment_method( $subscription, $order ) {
+		update_post_meta( $subscription->id, '_iugu_customer_payment_method_id', $order->get_meta( '_iugu_customer_payment_method_id' ) );
 	}
 
 	/**
 	 * Include the payment meta data required to process automatic recurring payments so that store managers can.
 	 * manually set up automatic recurring payments for a customer via the Edit Subscription screen in Subscriptions v2.0+.
 	 *
-	 * @param array $payment_meta associative array of meta data required for automatic payments
-	 * @param WC_Subscription $subscription An instance of a subscription object
+	 * @param array           $payment_meta Associative array of meta data required for automatic payments.
+	 * @param WC_Subscription $subscription An instance of a subscription object.
 	 * @return array
 	 */
 	public function add_subscription_payment_meta( $payment_meta, $subscription ) {
@@ -309,10 +308,9 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	 * Validate the payment meta data required to process automatic recurring payments so that store managers can.
 	 * manually set up automatic recurring payments for a customer via the Edit Subscription screen in Subscriptions 2.0+.
 	 *
-	 * @param  string $payment_method_id The ID of the payment method to validate.
-	 * @param  array $payment_meta associative array of meta data required for automatic payments.
-	 * @return array
-	 * @throws Exception
+	 * @throws Exception Error message.
+	 * @param string $payment_method_id The ID of the payment method to validate.
+	 * @param array  $payment_meta      Associative array of meta data required for automatic payments.
 	 */
 	public function validate_subscription_payment_meta( $payment_method_id, $payment_meta ) {
 		if ( $this->id === $payment_method_id ) {
@@ -325,34 +323,37 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	/**
 	 * Don't transfer customer meta to resubscribe orders.
 	 *
-	 * @param int $resubscribe_order The order created for the customer to resubscribe to the old expired/cancelled subscription.
+	 * @param int $order The order created for the customer to resubscribe to the old expired/cancelled subscription.
 	 */
-	public function delete_resubscribe_meta( $resubscribe_order ) {
-		delete_post_meta( $resubscribe_order->id, '_iugu_customer_payment_method_id' );
+	public function delete_resubscribe_meta( $order ) {
+		$order->delete_meta_data( '_iugu_customer_payment_method_id' );
+		$order->save();
 	}
 
 	/**
 	 * Process a pre-order payment when the pre-order is released.
 	 *
-	 * @param WC_Order $order
+	 * @param WC_Order $order Order instance.
 	 */
 	public function process_pre_order_release_payment( $order ) {
-		if ( 'yes' == $this->debug ) {
+		if ( 'yes' === $this->debug ) {
 			$this->log->add( $this->id, 'Processing a pre-order release payment for order ' . $order->get_order_number() );
 		}
 
 		try {
-			$payment_method_id = get_post_meta( $order->id, '_iugu_customer_payment_method_id', true );
+			$payment_method_id = $order->get_meta( '_iugu_customer_payment_method_id' );
 
 			if ( ! $payment_method_id ) {
-				if ( 'yes' == $this->debug ) {
+				if ( 'yes' === $this->debug ) {
 					$this->log->add( $this->id, 'Missing customer payment method ID in subscription payment for order ' . $order->get_order_number() );
 				}
 
 				return new Exception( __( 'Customer payment method not found!', 'iugu-woocommerce' ) );
 			}
 
-			$charge = $this->api->create_charge( $order, array( 'customer_payment_method_id' => $payment_method_id ) );
+			$charge = $this->api->create_charge( $order, array(
+				'customer_payment_method_id' => $payment_method_id,
+			) );
 
 			if ( isset( $charge['errors'] ) && ! empty( $charge['errors'] ) ) {
 				$error = is_array( $charge['errors'] ) ? current( $charge['errors'] ) : $charge['errors'];
@@ -360,12 +361,8 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 				return new Exception( $error );
 			}
 
-			update_post_meta( $order->id, '_transaction_id', sanitize_text_field( $charge['invoice_id'] ) );
-
-			// Save only in old versions.
-			if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1.12', '<=' ) ) {
-				update_post_meta( $order->id, __( 'Iugu Transaction details', 'iugu-woocommerce' ), 'https://iugu.com/a/invoices/' . sanitize_text_field( $charge['invoice_id'] ) );
-			}
+			$order->set_transaction_id( sanitize_text_field( $charge['invoice_id'] ) );
+			$order->save();
 
 			if ( ! $charge['success'] ) {
 				return new Exception( __( 'Iugu: Credit card declined.', 'iugu-woocommerce' ) );
@@ -374,11 +371,11 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 			$order->add_order_note( __( 'Iugu: Invoice paid successfully by credit card.', 'iugu-woocommerce' ) );
 			$order->payment_complete();
 		} catch ( Exception $e ) {
+			/* translators: %s: error message */
 			$order_note = sprintf( __( 'Iugu: Pre-order payment failed (%s).', 'iugu-woocommerce' ), $e->getMessage() );
 
-			// Mark order as failed if not already set,
-			// otherwise, make sure we add the order note so we can detect when someone fails to check out multiple times
-			if ( 'failed' != $order->get_status() ) {
+			// Mark order as failed if not already set, otherwise, make sure we add the order note so we can detect when someone fails to check out multiple times.
+			if ( 'failed' !== $order->get_status() ) {
 				$order->update_status( 'failed', $order_note );
 			} else {
 				$order->add_order_note( $order_note );
@@ -398,12 +395,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 	 */
 	public function payment_fields() {
 		$contains_subscription = false;
-
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
-			$order_id = absint( get_query_var( 'order-pay' ) );
-		} else {
-			$order_id = isset( $_GET['order_id'] ) ? absint( $_GET['order_id'] ) : 0;
-		}
+		$order_id              = absint( get_query_var( 'order-pay' ) );
 
 		// Check from "pay for order" page.
 		if ( 0 < $order_id ) {
@@ -415,11 +407,12 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 		if ( $contains_subscription ) {
 			wp_enqueue_script( 'wc-credit-card-form' );
 
-			if ( $description = $this->get_description() ) {
-				echo wpautop( wptexturize( $description ) );
+			$description = $this->get_description();
+			if ( $description ) {
+				echo wp_kses_post( wpautop( wptexturize( $description ) ) );
 			}
 
-			woocommerce_get_template(
+			wc_get_template(
 				'credit-card/payment-form.php',
 				array(
 					'order_total'          => 0,
@@ -427,7 +420,7 @@ class WC_Iugu_Credit_Card_Addons_Gateway extends WC_Iugu_Credit_Card_Gateway {
 					'smallest_installment' => 0,
 					'free_interest'        => 0,
 					'transaction_rate'     => 0,
-					'rates'                => array()
+					'rates'                => array(),
 				),
 				'woocommerce/iugu/',
 				WC_Iugu::get_templates_path()
