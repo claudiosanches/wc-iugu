@@ -523,7 +523,7 @@ class WC_Iugu_API {
 	/**
 	 * Get invoice status.
 	 *
-	 * @param  string $invoice_id
+	 * @param  string $invoice_id Invoice ID.
 	 *
 	 * @return string
 	 */
@@ -534,7 +534,7 @@ class WC_Iugu_API {
 
 		if ( is_wp_error( $response ) ) {
 			$this->log( 'WP_Error while trying to get an invoice status: ' . $response->get_error_message() );
-		} elseif ( 200 == $response['response']['code'] && 'OK' == $response['response']['message'] ) {
+		} elseif ( 200 === intval( $response['response']['code'] ) && 'OK' === $response['response']['message'] ) {
 			$invoice = json_decode( $response['body'], true );
 			$this->log( 'Invoice status recovered successfully!' );
 
@@ -549,8 +549,8 @@ class WC_Iugu_API {
 	/**
 	 * Get charge data.
 	 *
-	 * @param  WC_Order $order
-	 * @param  array    $posted
+	 * @param  WC_Order $order  Order instance.
+	 * @param  array    $posted Posted data.
 	 *
 	 * @return array
 	 */
@@ -598,8 +598,8 @@ class WC_Iugu_API {
 	/**
 	 * Create Charge.
 	 *
-	 * @param  WC_Order $order
-	 * @param  array    $posted
+	 * @param  WC_Order $order  Order instance.
+	 * @param  array    $posted Posted data.
 	 *
 	 * @return array
 	 */
@@ -609,7 +609,11 @@ class WC_Iugu_API {
 		$charge_data = $this->get_charge_data( $order, $posted );
 
 		if ( empty( $charge_data ) ) {
-			return array( 'errors' => array( __( 'An error has occurred while processing your payment, please try again. Or contact us for assistance.', 'iugu-woocommerce' ) ) );
+			return array(
+				'errors' => array(
+					__( 'An error has occurred while processing your payment, please try again. Or contact us for assistance.', 'iugu-woocommerce' ),
+				),
+			);
 		}
 
 		$charge_data = $this->build_api_params( $charge_data );
@@ -626,7 +630,11 @@ class WC_Iugu_API {
 
 		$this->log( 'Error while doing the charge for order ' . $order->get_order_number() . ': ' . wc_print_r( $response, true ) );
 
-		return array( 'errors' => array( __( 'An error has occurred while processing your payment, please try again. Or contact us for assistance.', 'iugu-woocommerce' ) ) );
+		return array(
+			'errors' => array(
+				__( 'An error has occurred while processing your payment, please try again. Or contact us for assistance.', 'iugu-woocommerce' ),
+			),
+		);
 	}
 
 	/**
@@ -641,10 +649,11 @@ class WC_Iugu_API {
 		$data = array(
 			'email'          => $order->billing_email,
 			'name'           => trim( $order->billing_first_name . ' ' . $order->billing_last_name ),
-			'set_as_default' => true
+			'set_as_default' => true,
 		);
 
-		if ( $cpf_cnpj = $this->get_cpf_cnpj( $order ) ) {
+		$cpf_cnpj = $this->get_cpf_cnpj( $order );
+		if ( $cpf_cnpj ) {
 			$data['cpf_cnpj'] = $cpf_cnpj;
 		}
 
@@ -678,7 +687,9 @@ class WC_Iugu_API {
 
 		// Try get a saved customer ID.
 		if ( 0 < $user_id ) {
+			// @codingStandardsIgnoreStart
 			$customer_id = get_user_meta( $user_id, '_iugu_customer_id', true );
+			// @codingStandardsIgnoreEnd
 
 			if ( $customer_id ) {
 				return $customer_id;
@@ -690,7 +701,9 @@ class WC_Iugu_API {
 
 		// Save the customer ID.
 		if ( 0 < $user_id ) {
+			// @codingStandardsIgnoreStart
 			update_user_meta( $user_id, '_iugu_customer_id', $customer_id );
+			// @codingStandardsIgnoreEnd
 		}
 
 		return $customer_id;
@@ -711,8 +724,9 @@ class WC_Iugu_API {
 
 		$data = array(
 			'customer_id' => $customer_id,
+			/* translators: %s: order number */
 			'description' => sprintf( __( 'Payment method created for order %s', 'iugu-woocommerce' ), $order->get_order_number() ),
-			'token'       => $card_token
+			'token'       => $card_token,
 		);
 
 		$data         = apply_filters( 'iugu_woocommerce_customer_payment_method_data', $data, $customer_id, $order );
@@ -741,8 +755,8 @@ class WC_Iugu_API {
 	 * @return array
 	 */
 	public function process_payment( $order_id ) {
-		$order  = new WC_Order( $order_id );
-		$charge = $this->create_charge( $order, $_POST );
+		$order  = wc_get_order( $order_id );
+		$charge = $this->create_charge( $order, wp_unslash( $_POST ) ); // WPCS: CSRF ok, input var okay.
 
 		if ( isset( $charge['errors'] ) && ! empty( $charge['errors'] ) ) {
 			$errors = is_array( $charge['errors'] ) ? $charge['errors'] : array( $charge['errors'] );
@@ -777,7 +791,7 @@ class WC_Iugu_API {
 			$payment_data = array_map(
 				'sanitize_text_field',
 				array(
-					'installments' => isset( $_POST['iugu_card_installments'] ) ? $_POST['iugu_card_installments'] : '1',
+					'installments' => isset( $_POST['iugu_card_installments'] ) ? wp_unslash( $_POST['iugu_card_installments'] ) : '1', // WPCS: CSRF ok, input var okay, sanitization ok.
 				)
 			);
 		}
@@ -813,7 +827,7 @@ class WC_Iugu_API {
 	 * @return bool
 	 */
 	protected function update_order_status( $order_id, $invoice_status ) {
-		$order          = new WC_Order( $order_id );
+		$order          = wc_get_order( $order_id );
 		$invoice_status = strtolower( $invoice_status );
 		$order_status   = $order->get_status();
 		$order_updated  = false;
@@ -821,9 +835,9 @@ class WC_Iugu_API {
 		$this->log( 'Iugu payment status for order ' . $order->get_order_number() . ' is now: ' . $invoice_status );
 
 		switch ( $invoice_status ) {
-			case 'pending' :
-				if ( ! in_array( $order_status, array( 'on-hold', 'processing', 'completed' ) ) ) {
-					if ( 'bank-slip' == $this->method ) {
+			case 'pending':
+				if ( ! in_array( $order_status, array( 'on-hold', 'processing', 'completed' ), true ) ) {
+					if ( 'bank-slip' === $this->method ) {
 						$order->update_status( 'on-hold', __( 'Iugu: The customer generated a bank slip, awaiting payment confirmation.', 'iugu-woocommerce' ) );
 					} else {
 						$order->update_status( 'on-hold', __( 'Iugu: Invoice paid by credit card, waiting for operator confirmation.', 'iugu-woocommerce' ) );
@@ -833,8 +847,8 @@ class WC_Iugu_API {
 				}
 
 				break;
-			case 'paid' :
-				if ( ! in_array( $order_status, array( 'processing', 'completed' ) ) ) {
+			case 'paid':
+				if ( ! in_array( $order_status, array( 'processing', 'completed' ), true ) ) {
 					$order->add_order_note( __( 'Iugu: Invoice paid successfully.', 'iugu-woocommerce' ) );
 
 					// Changing the order for processing and reduces the stock.
@@ -843,34 +857,32 @@ class WC_Iugu_API {
 				}
 
 				break;
-			case 'canceled' :
+			case 'canceled':
 				$order->update_status( 'cancelled', __( 'Iugu: Invoice canceled.', 'iugu-woocommerce' ) );
 				$order_updated = true;
 
 				break;
-			case 'partially_paid' :
+			case 'partially_paid':
 				$order->update_status( 'on-hold', __( 'Iugu: Invoice partially paid.', 'iugu-woocommerce' ) );
 				$order_updated = true;
 
 				break;
-			case 'refunded' :
+			case 'refunded':
 				$order->update_status( 'refunded', __( 'Iugu: Invoice refunded.', 'iugu-woocommerce' ) );
 				$this->send_email(
-					sprintf( __( 'Invoice for order %s was refunded', 'iugu-woocommerce' ), $order->get_order_number() ),
+					/* translators: %s: order number */
+					sprintf( esc_html__( 'Invoice for order %s was refunded', 'iugu-woocommerce' ), $order->get_order_number() ),
 					__( 'Invoice refunded', 'iugu-woocommerce' ),
-					sprintf( __( 'Order %s has been marked as refunded by Iugu.', 'iugu-woocommerce' ), $order->get_order_number() )
+					/* translators: %s: order number */
+					sprintf( esc_html__( 'Order %s has been marked as refunded by Iugu.', 'iugu-woocommerce' ), $order->get_order_number() )
 				);
 				$order_updated = true;
 
 				break;
-			case 'expired' :
+			case 'expired':
 				$order->update_status( 'failed', __( 'Iugu: Invoice expired.', 'iugu-woocommerce' ) );
 				$order_updated = true;
 
-				break;
-
-			default :
-				// No action xD.
 				break;
 		}
 
@@ -884,15 +896,15 @@ class WC_Iugu_API {
 	 * Payment notification handler.
 	 */
 	public function notification_handler() {
-		@ob_clean();
+		ob_clean();
 
-		if ( isset( $_REQUEST['event'] ) && isset( $_REQUEST['data']['id'] ) && 'invoice.status_changed' == $_REQUEST['event'] ) {
+		if ( isset( $_REQUEST['event'] ) && isset( $_REQUEST['data']['id'] ) && 'invoice.status_changed' === sanitize_text_field( wp_unslash( $_REQUEST['event'] ) ) ) { // WPCS: CSRF ok, input var ok.
 			global $wpdb;
 
 			header( 'HTTP/1.1 200 OK' );
 
-			$invoice_id = sanitize_text_field( $_REQUEST['data']['id'] );
-			$order_id   = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_transaction_id' AND meta_value = '%s'", $invoice_id ) );
+			$invoice_id = sanitize_text_field( wp_unslash( $_REQUEST['data']['id'] ) ); // WPCS: CSRF ok, input var ok.
+			$order_id   = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_transaction_id' AND meta_value = '%s'", $invoice_id ) ); // WPCS: db call ok, cache ok.
 			$order_id   = intval( $order_id );
 
 			if ( $order_id ) {
@@ -905,6 +917,8 @@ class WC_Iugu_API {
 			}
 		}
 
-		wp_die( __( 'The request failed!', 'iugu-woocommerce' ), __( 'The request failed!', 'iugu-woocommerce' ), array( 'response' => 200 ) );
+		wp_die( esc_html__( 'The request failed!', 'iugu-woocommerce' ), esc_html__( 'The request failed!', 'iugu-woocommerce' ), array(
+			'response' => 200,
+		) );
 	}
 }
