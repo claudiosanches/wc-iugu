@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "aecc98e52f3e56d4c5d9617635b742e2",
+    "content-hash": "208f0f217e5540049f6ceb2793bc8282",
     "packages": [
         {
             "name": "claudiosanches/wp-git-hooks",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/claudiosanches/wp-git-hooks.git",
-                "reference": "49f16e36b2d6fa07fdad2728ecf0b51d0a73fab1"
+                "reference": "d373f1edc5bf55da4f4752f000eef3ce8956aed7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/claudiosanches/wp-git-hooks/zipball/49f16e36b2d6fa07fdad2728ecf0b51d0a73fab1",
-                "reference": "49f16e36b2d6fa07fdad2728ecf0b51d0a73fab1",
+                "url": "https://api.github.com/repos/claudiosanches/wp-git-hooks/zipball/d373f1edc5bf55da4f4752f000eef3ce8956aed7",
+                "reference": "d373f1edc5bf55da4f4752f000eef3ce8956aed7",
                 "shasum": ""
             },
             "require": {
@@ -48,7 +48,7 @@
             "keywords": [
                 "wordpress"
             ],
-            "time": "2017-10-28T00:14:28+00:00"
+            "time": "2017-10-30T23:33:30+00:00"
         },
         {
             "name": "mustangostang/spyc",
