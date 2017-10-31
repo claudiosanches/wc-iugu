@@ -243,8 +243,7 @@ class WC_Iugu_Bank_Slip_Gateway extends WC_Payment_Gateway {
 			return;
 		}
 
-		$order = wc_get_order( $order_id );
-		$data  = $order->get_meta( '_iugu_wc_transaction_data' );
+		$data = $order->get_meta( '_iugu_wc_transaction_data' );
 
 		if ( isset( $data['pdf'] ) ) {
 			if ( $plain_text ) {
