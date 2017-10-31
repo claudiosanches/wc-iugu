@@ -144,13 +144,13 @@ class WC_Iugu_API {
 	}
 
 	/**
-	 * Only numbers.
+	 * Normalize numbers.
 	 *
 	 * @param  string|int $string string to extract numbers.
 	 *
 	 * @return string|int
 	 */
-	protected function only_numbers( $string ) {
+	protected function normalize_numbers( $string ) {
 		return preg_replace( '([^0-9])', '', $string );
 	}
 
@@ -288,7 +288,7 @@ class WC_Iugu_API {
 	 * @return string
 	 */
 	protected function get_phone_number( $order ) {
-		$phone_number = $this->only_numbers( $order->billing_phone );
+		$phone_number = $this->normalize_numbers( $order->get_billing_phone() );
 
 		return array(
 			'area_code' => substr( $phone_number, 0, 2 ),
@@ -308,12 +308,14 @@ class WC_Iugu_API {
 		$person_type    = intval( $wcbcf_settings['person_type'] );
 
 		if ( 0 !== $person_type ) {
-			if ( ( 1 === $person_type && 1 === intval( $order->billing_persontype ) ) || 2 === $person_type ) {
-				return $this->only_numbers( $order->billing_cpf );
+			$billing_person_type = intval( $order->get_meta( '_billing_persontype' ) );
+
+			if ( ( 1 === $person_type && 1 === $billing_person_type ) || 2 === $person_type ) {
+				return $this->normalize_numbers( $order->get_meta( '_billing_cpf' ) );
 			}
 
-			if ( ( 1 === $person_type && 2 === intval( $order->billing_persontype ) ) || 3 === $person_type ) {
-				return $this->only_numbers( $order->billing_cnpj );
+			if ( ( 1 === $person_type && 2 === $billing_person_type ) || 3 === $person_type ) {
+				return $this->normalize_numbers( $order->get_meta( '_billing_cnpj' ) );
 			}
 		}
 
@@ -330,7 +332,7 @@ class WC_Iugu_API {
 	protected function is_a_company( $order ) {
 		$wcbcf_settings = get_option( 'wcbcf_settings' );
 
-		if ( ( '1' === $wcbcf_settings['person_type'] && '2' === $order->billing_persontype ) || '3' === $wcbcf_settings['person_type'] ) {
+		if ( ( '1' === $wcbcf_settings['person_type'] && '2' === $order->get_meta( '_billing_persontype' ) ) || '3' === $wcbcf_settings['person_type'] ) {
 			return true;
 		}
 
@@ -359,31 +361,31 @@ class WC_Iugu_API {
 		$items        = array();
 		$phone_number = $this->get_phone_number( $order );
 		$data         = array(
-			'email'            => $order->billing_email,
+			'email'            => $order->get_billing_email(),
 			'due_date'         => $this->get_invoice_due_date(),
 			'return_url'       => $this->gateway->get_return_url( $order ),
 			'expired_url'      => str_replace( '&#038;', '&', $order->get_cancel_order_url() ),
 			'notification_url' => WC()->api_request_url( get_class( $this->gateway ) ),
 			'ignore_due_email' => true,
 			'payable_with'     => 'credit-card' === $this->method ? 'credit_card' : 'bank_slip',
+			'payer'            => array(
+				'name'         => $order->get_formatted_billing_full_name(),
+				'phone_prefix' => $phone_number['area_code'],
+				'phone'        => $phone_number['number'],
+				'email'        => $order->get_billing_email(),
+				'address'      => array(
+					'street'   => $order->get_billing_address_1(),
+					'number'   => $order->get_meta( '_billing_number' ),
+					'city'     => $order->get_billing_city(),
+					'state'    => $order->get_billing_state(),
+					'country'  => isset( WC()->countries->countries[ $order->get_billing_country() ] ) ? WC()->countries->countries[ $order->get_billing_country() ] : $order->get_billing_country(),
+					'zip_code' => $this->normalize_numbers( $order->get_billing_postcode() ),
+				),
+			),
 			'custom_variables' => array(
 				array(
 					'name'  => 'order_id',
-					'value' => $order->id,
-				),
-			),
-			'payer'      => array(
-				'name'         => $order->billing_first_name . ' ' . $order->billing_last_name,
-				'phone_prefix' => $phone_number['area_code'],
-				'phone'        => $phone_number['number'],
-				'email'        => $order->billing_email,
-				'address'      => array(
-					'street'   => $order->billing_address_1,
-					'number'   => $order->billing_number,
-					'city'     => $order->billing_city,
-					'state'    => $order->billing_state,
-					'country'  => isset( WC()->countries->countries[ $order->billing_country ] ) ? WC()->countries->countries[ $order->billing_country ] : $order->billing_country,
-					'zip_code' => $this->only_numbers( $order->billing_postcode ),
+					'value' => $order->get_id(),
 				),
 			),
 		);
@@ -406,80 +408,76 @@ class WC_Iugu_API {
 				'quantity'    => 1,
 			);
 		} else {
+			$discounts = 0;
+
 			// Products.
-			if ( 0 < count( $order->get_items() ) ) {
-				foreach ( $order->get_items() as $order_item ) {
-					if ( $order_item['qty'] ) {
-						$item_total = $this->get_cents( $order->get_item_total( $order_item, false ) );
+			foreach ( $order->get_items() as $order_item ) {
+				if ( $order_item->get_quantity() ) {
+					$item_total = $this->get_cents( $order->get_item_total( $order_item, false ) );
 
-						if ( 0 > $item_total ) {
-							continue;
-						}
-
-						$item_name = $order_item['name'];
-						$item_meta = new WC_Order_Item_Meta( $order_item['item_meta'] );
-
-						$meta = $item_meta->display( true, true );
-						if ( $meta ) {
-							$item_name .= ' - ' . $meta;
-						}
-
-						$items[] = array(
-							'description' => $item_name,
-							'price_cents' => $item_total,
-							'quantity'    => $order_item['qty'],
-						);
+					if ( 0 > $item_total ) {
+						continue;
 					}
+
+					$item_name = $order_item->get_name();
+					$item_meta = strip_tags( wc_display_item_meta( $order_item, array(
+						'before'    => '',
+						'separator' => ', ',
+						'after'     => '',
+						'echo'      => false,
+						'autop'     => false,
+					) ) );
+
+					if ( $item_meta ) {
+						$item_name .= ' (' . $item_meta . ')';
+					}
+
+					$items[] = array(
+						'description' => $item_name,
+						'price_cents' => $item_total,
+						'quantity'    => $order_item->get_quantity(),
+					);
 				}
 			}
 
 			// Fees.
-			if ( 0 < count( $order->get_fees() ) ) {
-				foreach ( $order->get_fees() as $fee ) {
-					$fee_total = $this->get_cents( $fee['line_total'] );
+			foreach ( $order->get_fees() as $fee ) {
+				$fee_total = $this->get_cents( $fee->get_total() );
 
-					if ( 0 > $fee_total ) {
-						continue;
-					}
-
-					$items[] = array(
-						'description' => $fee['name'],
-						'price_cents' => $fee_total,
-						'quantity'    => 1,
-					);
+				// Stop negative fees.
+				if ( 0 > $fee_total ) {
+					$discounts += $fee_total;
+					continue;
 				}
+
+				$items[] = array(
+					'description' => $fee->get_name(),
+					'price_cents' => $fee_total,
+					'quantity'    => $fee->get_quantity(),
+				);
+			}
+
+			// Discount based in negative fees.
+			if ( 0 > $discounts ) {
+				$data['discount_cents'] = $discounts;
 			}
 
 			// Taxes.
-			if ( 0 < count( $order->get_taxes() ) ) {
-				foreach ( $order->get_taxes() as $tax ) {
-					$tax_total = $this->get_cents( $tax['tax_amount'] + $tax['shipping_tax_amount'] );
-
-					if ( 0 > $tax_total ) {
-						continue;
-					}
-
-					$items[] = array(
-						'description' => $tax['label'],
-						'price_cents' => $tax_total,
-						'quantity'    => 1,
-					);
-				}
+			foreach ( $order->get_taxes() as $tax ) {
+				$items[] = array(
+					'description' => $tax->get_label(),
+					'price_cents' => $this->get_cents( $tax->get_tax_total() + $tax->get_shipping_tax_total() ),
+					'quantity'    => $tax->get_quantity(),
+				);
 			}
 
 			// Shipping Cost.
-			if ( method_exists( $order, 'get_total_shipping' ) ) {
-				$shipping_cost = $this->get_cents( $order->get_total_shipping() );
-			} else {
-				$shipping_cost = $this->get_cents( $order->get_shipping() );
-			}
-
-			if ( 0 < $shipping_cost ) {
+			foreach ( $order->get_shipping_methods() as $shipping ) {
 				$items[] = array(
 					/* translators: %s: shipping method name */
-					'description' => sprintf( __( 'Shipping via %s', 'iugu-woocommerce' ), $order->get_shipping_method() ),
-					'price_cents' => $shipping_cost,
-					'quantity'    => 1,
+					'description' => sprintf( __( 'Shipping via %s', 'iugu-woocommerce' ), $shipping->get_name() ),
+					'price_cents' => $this->get_cents( $shipping->get_total() ),
+					'quantity'    => $shipping->get_quantity(),
 				);
 			}
 		}
@@ -647,8 +645,8 @@ class WC_Iugu_API {
 		$this->log( 'Creating customer...' );
 
 		$data = array(
-			'email'          => $order->billing_email,
-			'name'           => trim( $order->billing_first_name . ' ' . $order->billing_last_name ),
+			'email'          => $order->get_billing_email(),
+			'name'           => trim( $order->get_formatted_billing_full_name() ),
 			'set_as_default' => true,
 		);
 
@@ -786,7 +784,7 @@ class WC_Iugu_API {
 				)
 			);
 
-			update_post_meta( $order->id, __( 'Iugu Bank Slip URL', 'iugu-woocommerce' ), $payment_data['pdf'] );
+			$order->update_meta_data( __( 'Iugu Bank Slip URL', 'iugu-woocommerce' ), $payment_data['pdf'] );
 		} else {
 			$payment_data = array_map(
 				'sanitize_text_field',
@@ -796,8 +794,9 @@ class WC_Iugu_API {
 			);
 		}
 
-		update_post_meta( $order->id, '_iugu_wc_transaction_data', $payment_data );
-		update_post_meta( $order->id, '_transaction_id', sanitize_text_field( $charge['invoice_id'] ) );
+		$order->update_meta_data( '_iugu_wc_transaction_data', $payment_data );
+		$order->set_transaction_id( sanitize_text_field( $charge['invoice_id'] ) );
+		$order->save();
 
 		WC()->cart->empty_cart();
 
@@ -904,8 +903,7 @@ class WC_Iugu_API {
 			header( 'HTTP/1.1 200 OK' );
 
 			$invoice_id = sanitize_text_field( wp_unslash( $_REQUEST['data']['id'] ) ); // WPCS: CSRF ok, input var ok.
-			$order_id   = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_transaction_id' AND meta_value = '%s'", $invoice_id ) ); // WPCS: db call ok, cache ok.
-			$order_id   = intval( $order_id );
+			$order_id   = intval( $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_transaction_id' AND meta_value = '%s'", $invoice_id ) ) ); // WPCS: db call ok, cache ok.
 
 			if ( $order_id ) {
 				$invoice_status = $this->get_invoice_status( $invoice_id );
