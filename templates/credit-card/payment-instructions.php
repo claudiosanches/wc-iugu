@@ -2,7 +2,7 @@
 /**
  * Credit Card - Payment instructions.
  *
- * @author  Iugu
+ * @author  Claudio_Sanches
  * @package Iugu_WooCommerce/Templates
  * @version 1.0.0
  */
@@ -14,5 +14,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 
 <div class="woocommerce-message">
-	<span><?php echo sprintf( __( 'Payment successfully made using credit card in %s.', 'iugu-woocommerce' ), '<strong>' . $installments . 'x</strong>' ); ?></span>
+	<span>
+		<?php
+			/* translators: %s: instalments */
+			echo esc_html( sprintf( __( 'Payment successfully made using credit card in %s.', 'iugu-woocommerce' ), $installments . 'x' ) );
+		?>
+	</span>
 </div>
