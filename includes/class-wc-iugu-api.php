@@ -378,6 +378,7 @@ class WC_Iugu_API {
 					'number'   => $order->get_meta( '_billing_number' ),
 					'city'     => $order->get_billing_city(),
 					'state'    => $order->get_billing_state(),
+					'district' => $order->get_meta( '_billing_neighborhood' ),
 					'country'  => isset( WC()->countries->countries[ $order->get_billing_country() ] ) ? WC()->countries->countries[ $order->get_billing_country() ] : $order->get_billing_country(),
 					'zip_code' => $this->normalize_numbers( $order->get_billing_postcode() ),
 				),
