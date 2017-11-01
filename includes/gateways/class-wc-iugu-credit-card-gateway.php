@@ -163,7 +163,7 @@ class WC_Iugu_Credit_Card_Gateway extends WC_Payment_Gateway {
 			'pass_interest' => array(
 				'title'       => __( 'Pass interest rate', 'iugu-woocommerce' ),
 				'type'        => 'checkbox',
-				'label'       => __( 'Pass on the Installments interest to the customer.', 'iugu-woocommerce' ),
+				'label'       => __( 'Pass on the Installments interest to the customer. Note: this setting is only for old iugu accounts.', 'iugu-woocommerce' ),
 				'description' => __( 'This option is only for display and should represent what was configured on your Iugu account.', 'iugu-woocommerce' ),
 				'desc_tip'    => true,
 				'default'     => 'no',
@@ -181,7 +181,7 @@ class WC_Iugu_Credit_Card_Gateway extends WC_Payment_Gateway {
 				),
 			),
 			'transaction_rate' => array(
-				'title'             => __( 'Rate per transaction', 'iugu-woocommerce' ),
+				'title'             => __( 'Rate per transaction (%)', 'iugu-woocommerce' ),
 				'type'              => 'number',
 				'description'       => __( 'Enter here the transaction rate that is set up in your plan in Iugu.', 'iugu-woocommerce' ) . ' ' . __( 'This option is only for display and should represent what was configured on your Iugu account.', 'iugu-woocommerce' ),
 				'desc_tip'          => true,
