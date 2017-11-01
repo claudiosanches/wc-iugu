@@ -4,7 +4,7 @@
  *
  * @author  Claudio_Sanches
  * @package Iugu_WooCommerce/Templates
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
