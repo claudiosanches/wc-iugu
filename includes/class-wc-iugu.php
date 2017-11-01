@@ -22,7 +22,7 @@ class WC_Iugu {
 		add_action( 'init', array( __CLASS__, 'load_plugin_textdomain' ) );
 
 		// Checks with WooCommerce and WooCommerce Extra Checkout Fields for Brazil is installed.
-		if ( class_exists( 'WC_Payment_Gateway' ) && class_exists( 'Extra_Checkout_Fields_For_Brazil' ) ) {
+		if ( self::is_woocommerce_3_installed() && class_exists( 'Extra_Checkout_Fields_For_Brazil' ) ) {
 			self::includes();
 
 			// Hook to add Iugu Gateway to WooCommerce.
@@ -91,12 +91,12 @@ class WC_Iugu {
 	 * Dependencies notices.
 	 */
 	public static function dependencies_notices() {
-		if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
-			include dirname( __FILE__ ) . '/includes/views/html-notice-woocommerce-missing.php';
+		if ( ! self::is_woocommerce_3_installed() ) {
+			include dirname( __FILE__ ) . '/admin/views/html-notice-woocommerce-missing.php';
 		}
 
 		if ( ! class_exists( 'Extra_Checkout_Fields_For_Brazil' ) ) {
-			include dirname( __FILE__ ) . '/includes/views/html-notice-ecfb-missing.php';
+			include dirname( __FILE__ ) . '/admin/views/html-notice-ecfb-missing.php';
 		}
 	}
 
@@ -116,5 +116,15 @@ class WC_Iugu {
 		$plugin_links[] = '<a href="' . esc_url( $settings_url . 'iugu-bank-slip' ) . '">' . __( 'Bank Slip Settings', 'iugu-woocommerce' ) . '</a>';
 
 		return array_merge( $plugin_links, $links );
+	}
+
+	/**
+	 * Check if WooCommerce 3.0+ is installed.
+	 *
+	 * @return bool
+	 */
+	private static function is_woocommerce_3_installed() {
+		return false;
+		return defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '3.0', '>=' );
 	}
 }
