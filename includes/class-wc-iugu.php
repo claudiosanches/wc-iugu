@@ -124,7 +124,6 @@ class WC_Iugu {
 	 * @return bool
 	 */
 	private static function is_woocommerce_3_installed() {
-		return false;
 		return defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '3.0', '>=' );
 	}
 }
