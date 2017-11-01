@@ -32,13 +32,13 @@ Também é compatível com os seguintes plugins:
 
 Você pode esclarecer suas dúvidas usando:
 
-* A nossa sessão de [FAQ](http://wordpress.org/extend/plugins/iugu-woocommerce/faq/).
+* A nossa sessão de [FAQ](http://wordpress.org/plugins/iugu-woocommerce/faq/).
 * Criando um tópico no [fórum de público do WordPress](http://wordpress.org/support/plugin/iugu-woocommerce).
-* Criando um tópico no [fórum do Github](https://github.com/iugu/iugu-woocommerce/issues).
+* Criando um tópico no [fórum do Github](https://github.com/claudiosanches/iugu-woocommerce/issues).
 
 = Colaborar =
 
-Você pode contribuir com código-fonte em nossa página no [GitHub](https://github.com/iugu/iugu-woocommerce).
+Você pode contribuir com código-fonte em nossa página no [GitHub](https://github.com/claudiosanches/iugu-woocommerce).
 
 == Installation ==
 
@@ -49,7 +49,7 @@ Você pode contribuir com código-fonte em nossa página no [GitHub](https://git
 
 = Requerimentos: =
 
-É necessário possuir uma conta no [Iugu](https://iugu.com/) e ter instalado o [WooCommerce](http://wordpress.org/extend/plugins/woocommerce/).
+É necessário possuir uma conta no [Iugu](https://iugu.com/) e ter instalado o [WooCommerce](http://wordpress.org/plugins/woocommerce/).
 
 = Configuração no Iugu =
 
@@ -71,21 +71,11 @@ Note que o plugin divide as duas formas de pagamento, permitindo você ativar e 
 
 Entre as opções do cartão de crédito é possível configurar o número de parcelas que os clientes poderam dividir, esta opção não pode ser maior do que o valor configurado dentro da sua conta do Iugu.
 
-É possível também manipular a exibição do valor das parcelas com as opções de "Repassar juros", "Sem juros" e "Taxa por transação".
-
-Note que estas opções são apenas de exibição e não configura de nenhuma forma o valor total que o cliente realmente irá pagar, pois o que controla isto são as configurações de parcelas da sua conta do Iugu e desta forma as opções de "Repassar juros", "Sem juros", "Taxa por transação" devem represetar exatamente o que você configurou na sua conta do Iugu.
+É possível também manipular a exibição do valor das parcelas com as opções de "Repassar juros", "Sem juros" e "Taxa por transação" para contas no modelo antigo de tarifas. Note que estas opções são apenas de exibição e não configura de nenhuma forma o valor total que o cliente realmente irá pagar, pois o que controla isto são as configurações de parcelas da sua conta do Iugu e desta forma as opções de "Repassar juros", "Sem juros", "Taxa por transação" devem represetar exatamente o que você configurou na sua conta do Iugu.
 
 Para saber mais sobre parcelamento e juros no Iugu leia o tutorial: [Existem juros no parcelamento?](http://support.iugu.com/hc/pt-br/articles/201728767-Existem-juros-no-parcelamento-).
 
-= Configurações no WooCommerce =
-
-No WooCommerce 3.0 ou superior existe uma opção para cancelar a compra e liberar o estoque depois de alguns minutos.
-
-Esta opção não funciona muito bem com o boleto bancário, pois pagamentos por boleto bancário pode demorar até 48 horas para serem validados.
-
-Para corrigir isso é necessário ir em "WooCommerce" > "Configurações" > "Produtos" > "Inventário" e limpar (deixe em branco) a opção **Manter Estoque (minutos)**.
-
-Pronto, sua loja já pode receber pagamentos pelo Iugu.
+Opções para o modelo novo de tarifas serão adicionadas em breve neste plugin, provavelmente até a versão 2.2.0.
 
 = Sandbox =
 
@@ -97,16 +87,11 @@ Quando for trocar para produção você deve desmarcar a opção e adicionar uma
 
 == Frequently Asked Questions ==
 
-= Qual é a licença do plugin? =
-
-Este plugin esta licenciado como GPL.
-
 = O que eu preciso para utilizar este plugin? =
 
-* Ter instalado o plugin WooCommerce 2.1 ou superior.
+* Ter instalado o plugin WooCommerce 3.0 ou posterior.
 * Possuir uma conta no [Iugu](https://iugu.com/).
 * Pegar o seu **ID de conta** e gerar uma **API Token** na página de [sua conta no Iugu](https://iugu.com/settings/account).
-* Desativar a opção **Manter Estoque (minutos)** do WooCommerce.
 
 Note que você NÃO PRECISA configurar qualquer GATILHO dentro da sua conta do Iugu!
 
